@@ -458,7 +458,23 @@ fn parity_digest() -> i64 {
     return h;
 }
 
+// Emit every (state, event) -> result record in defined order, one per line.
+// GATE 5 diffs these records individually; the digest alone cannot establish
+// equality, because a rolling checksum admits constructed collisions.
+fn parity_records() -> i64 {
+    let mut s: i64 = 0;
+    while s < 8192 {
+        let mut e: i64 = 0;
+        while e < 27 {
+            print(model_step(s, e, 0));
+            e = e + 1;
+        }
+        s = s + 1;
+    }
+    return 0;
+}
+
 fn main() -> i64 {
-    print(parity_digest());
+    parity_records();
     return 0;
 }

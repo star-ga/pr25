@@ -118,12 +118,17 @@ paths:
 | Run | `python3 pr25_verify.py` | `./verify/run_gates.sh` |
 
 Both were run over the entire encoded transition relation — 8,192 state
-encodings x 27 events = **221,184 transitions** — and agree:
+encodings x 27 events = **221,184 transitions** — and every transition record
+was compared individually:
 
 ```
-MIND        596895410
-independent 596895410
+221184/221184 transition records identical (8192 x 27)
 ```
+
+The comparison is record-by-record. An earlier revision compared a single
+rolling checksum, which an external reviewer showed was insufficient: the
+reduction admits constructed collisions, so equal digests do not establish
+equal transcripts. The gate now diffs every record and asserts the exact count.
 
 The comparison implementation used for that check was written from the
 specification, not transliterated from the code under test. This is the

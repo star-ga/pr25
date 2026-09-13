@@ -84,6 +84,24 @@ def parity_digest() -> int:
     return h
 
 
+def parity_records():
+    """Emit every (state, event) -> result record in defined order, one per line.
+
+    GATE 5 diffs these records individually. The rolling digest below is kept
+    only as a cheap smoke check: a checksum admits constructed collisions and
+    therefore cannot establish transition-by-transition equality.
+    """
+    out = []
+    for s in range(8192):
+        for e in range(27):
+            out.append(step(s, e))
+    return out
+
+
 if __name__ == "__main__":
-    d = parity_digest()
-    print(d)
+    import sys
+
+    if "--digest" in sys.argv:
+        print(parity_digest())
+    else:
+        sys.stdout.write("\n".join(str(r) for r in parity_records()) + "\n")
