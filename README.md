@@ -33,7 +33,7 @@ needs its own valid contract, operating envelope and response bound.
 | `PR25_Public_Technical_Paper_v0.4.pdf` | 18 | All 25 requirement families, admission rules, evidence requirements, physical-assurance boundaries, worked example, validation plan, open proof obligations, 16 references |
 | `PR25_Verification_Note_v0.4.pdf` | 3 | What was executed, the verification weakness found and repaired, exact counts, source hashes, reproduction commands, limits |
 | `PR25_Public_Brief_v0.4.pdf` | 4 | Short introduction and the complete 25-family index |
-| `reference_model/` | — | Executable finite reference model (see status below) |
+| `reference_model/` | — | Executable finite reference model — runnable, standard library only |
 
 ---
 
@@ -59,15 +59,49 @@ mathematically minimal basis.
 
 ---
 
-## Reference model — status
+## Reference model — reproduce it yourself
 
-The reference model referenced by the Verification Note (`pr25_model_check.py`,
-`pr25_verify.py`, their result JSON files and the SHA-256 manifest) is **not yet
-published in this repository**. See `reference_model/STATUS.md`.
+The executable finite reference model is in `reference_model/`, published
+byte-unchanged from the audited source.
 
-Until those files are present, the counts above are reported by the Verification
-Note rather than reproducible from this repository. We would rather say that
-plainly than describe evidence as reproducible before it can be reproduced.
+```sh
+cd reference_model
+python3 pr25_model_check.py                        # original checker, unchanged
+python3 pr25_verify.py --output /tmp/verified.json # strengthened verifier
+```
+
+Python 3.10 or later. Standard library only, no dependencies. Do not pass `-O`:
+the original module refuses optimized mode, because its checks are assertions.
+A nonzero exit is a failed run, not an inconclusive pass.
+
+`pr25_model_check.py` overwrites its adjacent `pr25_model_results.json`; run it
+in a copy if you want to preserve the recorded bytes.
+
+| File | What it is |
+|---|---|
+| `pr25_model_check.py` | Original checker, unchanged |
+| `pr25_model_results.json` | Original recorded results |
+| `pr25_verify.py` | v0.4 strengthened verifier (separately stated oracle) |
+| `verified_results.json` | Executed v0.4 results |
+| `ORIGINAL_README.md` | Historical source explanation |
+| `README_v0.4.md` | v0.4 reference-model notes |
+
+Source digests, as pinned in the Verification Note:
+
+```
+e5b69731fa56e4b0223a6c847c5a46cf23d834052d3b71403b37f3fb93311fe8  pr25_model_check.py
+49f6c73b7cd35f9d7e90be91d4b632edfe83d71718cb554f80d418e532b8d710  pr25_model_results.json
+f886e034955b6143cf6c3673363a8293814f25bde523d1ac5d5a1ac1187ac740  pr25_verify.py
+```
+
+These are integrity checks. They are not signatures, certification, or evidence
+about the physical truth of any input.
+
+**Interpreter note.** The Verification Note's run used CPython 3.13.5. The
+recorded `verified_results.json` embeds that interpreter version, so a run on a
+different supported interpreter reproduces every check and every count while
+differing in that metadata field. The model counts do not depend on the
+interpreter version.
 
 ---
 

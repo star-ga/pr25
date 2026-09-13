@@ -1,0 +1,267 @@
+{
+  "baseline": {
+    "events_per_state": 27,
+    "outputs_reached": [
+      "NONE",
+      "NORMAL",
+      "NO_ASSURED_OUTPUT",
+      "PROTECTIVE"
+    ],
+    "reachable_states": 3078,
+    "status": "PASS",
+    "transitions_checked": 83106
+  },
+  "constructive_census": {
+    "closure_transitions": 83106,
+    "constructively_reached_states": 3078,
+    "maximum_witness_length": 12,
+    "method": "Closed candidate set containing the initial state, with a concrete initial-state witness for every member."
+  },
+  "demonstrated_original_oracle_blind_spot": {
+    "mutation": "normal_ok omits required_set",
+    "new_oracle_result": {
+      "property": "active_authority_retained_after_invalidation",
+      "states_discovered": 73,
+      "status": "COUNTEREXAMPLE",
+      "trace": [
+        "issue",
+        "start",
+        "invalidate:required_set"
+      ],
+      "transitions_checked": 336
+    },
+    "old_oracle_result": {
+      "events_per_state": 27,
+      "outputs_reached": [
+        "NONE",
+        "NORMAL",
+        "NO_ASSURED_OUTPUT",
+        "PROTECTIVE"
+      ],
+      "reachable_states": 3088,
+      "status": "PASS",
+      "transitions_checked": 83376
+    }
+  },
+  "edition": "PR-25 reference audit v0.4",
+  "fold": {
+    "abstract_states": 6,
+    "abstract_transitions": 72,
+    "claim": "Exact fold equivalence under the declared trusted-input abstraction; induction extends to every finite list length.",
+    "concrete_25_entry_cases": 302
+  },
+  "limits": [
+    "Trusted Boolean summaries; no sensor or physical predicate verification",
+    "Atomic local transitions and Boolean freshness; no clock or delay model",
+    "One permit; no distributed concurrency, persistent replay ledger, or cryptographic verification",
+    "No robot, controller, stopping, scheduling, fault-containment, or deployment validation",
+    "Shared Python/runtime/reviewer trust remains; no independent proof certificate"
+  ],
+  "reference_source_sha256": "e5b69731fa56e4b0223a6c847c5a46cf23d834052d3b71403b37f3fb93311fe8",
+  "run_date": "2026-09-13",
+  "runtime": "CPython 3.13.5",
+  "selected_mutations": {
+    "denominator": 42,
+    "detected": 42,
+    "original_supervisor": 6,
+    "original_supervisor_results": {
+      "allow_consumed_replay": {
+        "property": "invalidated_permit_reused",
+        "states_discovered": 80,
+        "status": "COUNTEREXAMPLE",
+        "trace": [
+          "issue",
+          "protect",
+          "replay"
+        ],
+        "transitions_checked": 356
+      },
+      "omit_commit_recheck": {
+        "property": "normal_output_without_current_conditions",
+        "states_discovered": 81,
+        "status": "COUNTEREXAMPLE",
+        "trace": [
+          "issue",
+          "invalidate:obligations",
+          "start"
+        ],
+        "transitions_checked": 380
+      },
+      "omit_context_check": {
+        "property": "normal_output_without_current_conditions",
+        "states_discovered": 117,
+        "status": "COUNTEREXAMPLE",
+        "trace": [
+          "issue",
+          "invalidate:context",
+          "start"
+        ],
+        "transitions_checked": 515
+      },
+      "omit_continuation_recheck": {
+        "property": "active_authority_retained_after_invalidation",
+        "states_discovered": 70,
+        "status": "COUNTEREXAMPLE",
+        "trace": [
+          "issue",
+          "start",
+          "invalidate:obligations"
+        ],
+        "transitions_checked": 332
+      },
+      "recovery_requires_logging": {
+        "property": "available_protective_output_blocked",
+        "states_discovered": 69,
+        "status": "COUNTEREXAMPLE",
+        "trace": [
+          "invalidate:log_available",
+          "protect"
+        ],
+        "transitions_checked": 303
+      },
+      "recovery_requires_mission_authority": {
+        "property": "available_protective_output_blocked",
+        "states_discovered": 63,
+        "status": "COUNTEREXAMPLE",
+        "trace": [
+          "invalidate:mission_authority",
+          "protect"
+        ],
+        "transitions_checked": 222
+      }
+    },
+    "shared_helper": 9,
+    "shared_helper_results": {
+      "omit_shared_applicability": {
+        "property": "active_authority_retained_after_invalidation",
+        "states_discovered": 72,
+        "status": "COUNTEREXAMPLE",
+        "trace": [
+          "issue",
+          "start",
+          "invalidate:applicability"
+        ],
+        "transitions_checked": 334
+      },
+      "omit_shared_context": {
+        "property": "active_authority_retained_after_invalidation",
+        "states_discovered": 76,
+        "status": "COUNTEREXAMPLE",
+        "trace": [
+          "issue",
+          "start",
+          "invalidate:context"
+        ],
+        "transitions_checked": 342
+      },
+      "omit_shared_evidence": {
+        "property": "active_authority_retained_after_invalidation",
+        "states_discovered": 75,
+        "status": "COUNTEREXAMPLE",
+        "trace": [
+          "issue",
+          "start",
+          "invalidate:evidence"
+        ],
+        "transitions_checked": 340
+      },
+      "omit_shared_gate_healthy": {
+        "property": "active_authority_retained_after_invalidation",
+        "states_discovered": 78,
+        "status": "COUNTEREXAMPLE",
+        "trace": [
+          "issue",
+          "start",
+          "invalidate:gate_healthy"
+        ],
+        "transitions_checked": 346
+      },
+      "omit_shared_mission_authority": {
+        "property": "active_authority_retained_after_invalidation",
+        "states_discovered": 77,
+        "status": "COUNTEREXAMPLE",
+        "trace": [
+          "issue",
+          "start",
+          "invalidate:mission_authority"
+        ],
+        "transitions_checked": 344
+      },
+      "omit_shared_obligations": {
+        "property": "active_authority_retained_after_invalidation",
+        "states_discovered": 71,
+        "status": "COUNTEREXAMPLE",
+        "trace": [
+          "issue",
+          "start",
+          "invalidate:obligations"
+        ],
+        "transitions_checked": 332
+      },
+      "omit_shared_profile": {
+        "property": "active_authority_retained_after_invalidation",
+        "states_discovered": 74,
+        "status": "COUNTEREXAMPLE",
+        "trace": [
+          "issue",
+          "start",
+          "invalidate:profile"
+        ],
+        "transitions_checked": 338
+      },
+      "omit_shared_recovery_ready": {
+        "property": "active_authority_retained_after_invalidation",
+        "states_discovered": 79,
+        "status": "COUNTEREXAMPLE",
+        "trace": [
+          "issue",
+          "start",
+          "invalidate:recovery_ready"
+        ],
+        "transitions_checked": 348
+      },
+      "omit_shared_required_set": {
+        "property": "active_authority_retained_after_invalidation",
+        "states_discovered": 73,
+        "status": "COUNTEREXAMPLE",
+        "trace": [
+          "issue",
+          "start",
+          "invalidate:required_set"
+        ],
+        "transitions_checked": 336
+      }
+    },
+    "verdict": 27
+  },
+  "sequence_checks": {
+    "alphabet_size": 12,
+    "bounded_sequence_cases": 271453,
+    "lengths": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "malformed_input_cases": 19,
+    "original_case_accounting": {
+      "all_not_applicable_25_entry_case": 1,
+      "distinct_sequences": 278,
+      "empty_sequence_case": 1,
+      "positional_25_entry_cases": 300,
+      "total_executed": 302
+    },
+    "scope": "Bounded enumeration plus the separately stated fold induction; not a physical predicate proof."
+  },
+  "status": "PASS",
+  "transition_correspondence": {
+    "comparisons": 221184,
+    "events": 27,
+    "mismatches": 0,
+    "scope": "All finite encodings, including unreachable states; not physical executions.",
+    "state_encodings": 8192
+  },
+  "verifier_source_sha256": "f886e034955b6143cf6c3673363a8293814f25bde523d1ac5d5a1ac1187ac740"
+}

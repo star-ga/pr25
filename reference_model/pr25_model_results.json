@@ -1,0 +1,198 @@
+{
+  "scope": "Finite discrete admission/permit/recovery abstraction; no physical-system proof.",
+  "fold": {
+    "abstract_states": 6,
+    "abstract_transitions": 72,
+    "concrete_25_entry_cases": 302,
+    "claim": "Exact fold equivalence under the declared trusted-input abstraction; induction extends to every finite list length."
+  },
+  "baseline": {
+    "status": "PASS",
+    "reachable_states": 3078,
+    "transitions_checked": 83106,
+    "events_per_state": 27,
+    "outputs_reached": [
+      "NONE",
+      "NORMAL",
+      "NO_ASSURED_OUTPUT",
+      "PROTECTIVE"
+    ]
+  },
+  "verdict_mutations": [
+    {
+      "mutation": "omit_PR_01",
+      "caught": true
+    },
+    {
+      "mutation": "omit_PR_02",
+      "caught": true
+    },
+    {
+      "mutation": "omit_PR_03",
+      "caught": true
+    },
+    {
+      "mutation": "omit_PR_04",
+      "caught": true
+    },
+    {
+      "mutation": "omit_PR_05",
+      "caught": true
+    },
+    {
+      "mutation": "omit_PR_06",
+      "caught": true
+    },
+    {
+      "mutation": "omit_PR_07",
+      "caught": true
+    },
+    {
+      "mutation": "omit_PR_08",
+      "caught": true
+    },
+    {
+      "mutation": "omit_PR_09",
+      "caught": true
+    },
+    {
+      "mutation": "omit_PR_10",
+      "caught": true
+    },
+    {
+      "mutation": "omit_PR_11",
+      "caught": true
+    },
+    {
+      "mutation": "omit_PR_12",
+      "caught": true
+    },
+    {
+      "mutation": "omit_PR_13",
+      "caught": true
+    },
+    {
+      "mutation": "omit_PR_14",
+      "caught": true
+    },
+    {
+      "mutation": "omit_PR_15",
+      "caught": true
+    },
+    {
+      "mutation": "omit_PR_16",
+      "caught": true
+    },
+    {
+      "mutation": "omit_PR_17",
+      "caught": true
+    },
+    {
+      "mutation": "omit_PR_18",
+      "caught": true
+    },
+    {
+      "mutation": "omit_PR_19",
+      "caught": true
+    },
+    {
+      "mutation": "omit_PR_20",
+      "caught": true
+    },
+    {
+      "mutation": "omit_PR_21",
+      "caught": true
+    },
+    {
+      "mutation": "omit_PR_22",
+      "caught": true
+    },
+    {
+      "mutation": "omit_PR_23",
+      "caught": true
+    },
+    {
+      "mutation": "omit_PR_24",
+      "caught": true
+    },
+    {
+      "mutation": "omit_PR_25",
+      "caught": true
+    },
+    {
+      "mutation": "stale_as_pass",
+      "caught": true
+    },
+    {
+      "mutation": "vacuous_empty_set",
+      "caught": true
+    }
+  ],
+  "state_machine_mutations": {
+    "omit_commit_recheck": {
+      "status": "COUNTEREXAMPLE",
+      "property": "normal_output_without_current_conditions",
+      "trace": [
+        "issue",
+        "invalidate:obligations",
+        "start"
+      ],
+      "states_discovered": 81,
+      "transitions_checked": 380
+    },
+    "omit_context_check": {
+      "status": "COUNTEREXAMPLE",
+      "property": "normal_output_without_current_conditions",
+      "trace": [
+        "issue",
+        "invalidate:context",
+        "start"
+      ],
+      "states_discovered": 117,
+      "transitions_checked": 515
+    },
+    "omit_continuation_recheck": {
+      "status": "COUNTEREXAMPLE",
+      "property": "normal_output_without_current_conditions",
+      "trace": [
+        "issue",
+        "start",
+        "invalidate:obligations",
+        "continue"
+      ],
+      "states_discovered": 257,
+      "transitions_checked": 1893
+    },
+    "allow_consumed_replay": {
+      "status": "COUNTEREXAMPLE",
+      "property": "invalidated_permit_reused",
+      "trace": [
+        "issue",
+        "protect",
+        "replay"
+      ],
+      "states_discovered": 80,
+      "transitions_checked": 356
+    },
+    "recovery_requires_mission_authority": {
+      "status": "COUNTEREXAMPLE",
+      "property": "available_protective_output_blocked",
+      "trace": [
+        "invalidate:mission_authority",
+        "protect"
+      ],
+      "states_discovered": 63,
+      "transitions_checked": 222
+    },
+    "recovery_requires_logging": {
+      "status": "COUNTEREXAMPLE",
+      "property": "available_protective_output_blocked",
+      "trace": [
+        "invalidate:log_available",
+        "protect"
+      ],
+      "states_discovered": 69,
+      "transitions_checked": 303
+    }
+  }
+}
