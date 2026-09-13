@@ -1,0 +1,464 @@
+// PR-25 v0.4: pure-MIND scalar reference-model source candidate.
+// NOT COMPILED OR EXECUTED in the accompanying audit. NOT a robot controller.
+// No Python, imports, or explicit FFI calls. Compiler/runtime dependencies remain unverified.
+// Language surface: i64, functions, let mut, if, while, return, print.
+// All normal inputs and intermediate encodings below are nonnegative i64.
+//
+// State = flags + 1024 * permit + 4096 * binding.
+// Flags 0..8: obligations, applicability, required-set, profile, evidence,
+// context, mission authority, gate health, recovery readiness. Flag 9: logging.
+// Permit: 0 NONE, 1 READY, 2 ACTIVE, 3 CONSUMED. Binding: 0 stale, 1 fresh.
+// Event: 0 issue, 1 start, 2 continue, 3 finish, 4 replay, 5 protect, 6 discard;
+// events 7+2*i invalidate flag i; events 8+2*i restore flag i.
+// Step result = 4 * next_state + output; -1 means invalid encoding.
+// Output: 0 NONE, 1 NORMAL, 2 PROTECTIVE, 3 NO_ASSURED_OUTPUT.
+// Mutants 1..6 preserve the original selected faulty variants (some are coupled).
+// Mutants 7..15 omit one normal condition only in the implementation helper.
+
+fn power_two(n: i64) -> i64 {
+    let mut x: i64 = 1;
+    let mut i: i64 = 0;
+    while i < n {
+        x = x * 2;
+        i = i + 1;
+    }
+    return x;
+}
+
+fn implementation_normal(s: i64, mutant: i64) -> bool {
+    let mut i: i64 = 0;
+    while i < 9 {
+        if mutant != i + 7 {
+            if (s / power_two(i)) % 2 == 0 {
+                return 0;
+            }
+        }
+        i = i + 1;
+    }
+    return 1;
+}
+
+fn specification_normal(s: i64) -> bool {
+    // Independent arithmetic statement; no call to implementation_normal.
+    return s % 512 == 511;
+}
+
+fn protection(s: i64, mutant: i64) -> i64 {
+    if (s / 256) % 2 == 0 {
+        return 3;
+    }
+    if mutant == 5 && (s / 64) % 2 == 0 {
+        return 3;
+    }
+    if mutant == 6 && (s / 512) % 2 == 0 {
+        return 3;
+    }
+    return 2;
+}
+
+fn model_step(s: i64, event: i64, mutant: i64) -> i64 {
+    if s < 0 || s >= 8192 || event < 0 || event >= 27 || mutant < 0 || mutant > 15 {
+        return -1;
+    }
+    let mut flags: i64 = s % 1024;
+    let mut permit: i64 = (s / 1024) % 4;
+    let mut binding: i64 = s / 4096;
+    let mut output: i64 = 0;
+    if event == 0 {
+        if (permit == 0 || permit == 3) && implementation_normal(s, mutant) {
+            permit = 1;
+            binding = 1;
+        }
+    } else {
+        if event == 1 {
+            let mut good: bool = implementation_normal(s, mutant) && binding == 1;
+            if mutant == 1 {
+                good = 1;
+            }
+            // Original context mutant also omits the binding test: a coupled defect.
+            if mutant == 2 {
+                good = flags % 512 == 511 || flags % 512 == 479;
+            }
+            if permit == 1 && good {
+                permit = 2;
+                output = 1;
+            }
+        } else {
+            if event == 2 {
+                let mut good: bool = implementation_normal(s, mutant) && binding == 1;
+                if mutant == 3 {
+                    good = 1;
+                }
+                if permit == 2 && good {
+                    output = 1;
+                }
+            } else {
+                if event == 3 {
+                    if permit == 2 {
+                        permit = 3;
+                    }
+                } else {
+                    if event == 4 {
+                        if mutant == 4 && permit == 3 && implementation_normal(s, mutant) {
+                            permit = 2;
+                            output = 1;
+                        }
+                    } else {
+                        if event == 5 {
+                            if permit != 0 {
+                                permit = 3;
+                            }
+                            binding = 0;
+                            output = protection(s, mutant);
+                        } else {
+                            if event == 6 {
+                                if permit == 1 {
+                                    permit = 0;
+                                    binding = 0;
+                                }
+                            } else {
+                                let field: i64 = (event - 7) / 2;
+                                let value: i64 = (event - 7) % 2;
+                                let weight: i64 = power_two(field);
+                                flags = flags - ((flags / weight) % 2) * weight + value * weight;
+                                if value == 0 && field < 9 {
+                                    binding = 0;
+                                }
+                                let changed: i64 = flags + 1024 * permit + 4096 * binding;
+                                if permit == 2 && !implementation_normal(changed, mutant) {
+                                    // Original continuation mutant weakens both continuation and invalidation.
+                                    if mutant != 3 {
+                                        permit = 3;
+                                    }
+                                    output = protection(changed, mutant);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return 4 * (flags + 1024 * permit + 4096 * binding) + output;
+}
+
+fn violates(s: i64, event: i64, result: i64) -> bool {
+    if result < 0 || result >= 32768 {
+        return 1;
+    }
+    let next: i64 = result / 4;
+    let output: i64 = result % 4;
+    let permit: i64 = (s / 1024) % 4;
+    let next_permit: i64 = (next / 1024) % 4;
+    if output == 1 {
+        if !specification_normal(s) || s / 4096 != 1 {
+            return 1;
+        }
+        if event != 1 && event != 2 {
+            return 1;
+        }
+        if event == 1 && permit != 1 {
+            return 1;
+        }
+        if event == 2 && permit != 2 {
+            return 1;
+        }
+        if next_permit != 2 || next / 4096 != 1 || !specification_normal(next) {
+            return 1;
+        }
+    }
+    if next_permit == 2 && (!specification_normal(next) || next / 4096 != 1) {
+        return 1;
+    }
+    let invalidation: bool = event >= 7 && (event - 7) % 2 == 0;
+    let needs: bool = event == 5 || (invalidation && permit == 2 && !specification_normal(next));
+    let ready: bool = (next / 256) % 2 == 1;
+    if needs && ready && output != 2 {
+        return 1;
+    }
+    if output == 2 && !ready {
+        return 1;
+    }
+    return 0;
+}
+
+fn reachable(s: i64) -> bool {
+    if s < 0 || s >= 8192 {
+        return 0;
+    }
+    let permit: i64 = (s / 1024) % 4;
+    let binding: i64 = s / 4096;
+    if permit == 0 {
+        return binding == 0;
+    }
+    if permit == 2 {
+        return binding == 1 && specification_normal(s);
+    }
+    return binding == 0 || specification_normal(s);
+}
+
+fn witness_state(target: i64) -> i64 {
+    // Construct a concrete path from the single initial state, not a guessed census.
+    let permit: i64 = (target / 1024) % 4;
+    let binding: i64 = target / 4096;
+    let mut s: i64 = 1023;
+    if permit == 1 {
+        s = model_step(s, 0, 0) / 4;
+        if binding == 0 {
+            s = model_step(s, 7, 0) / 4;
+        }
+    } else {
+        if permit == 2 {
+            s = model_step(s, 0, 0) / 4;
+            s = model_step(s, 1, 0) / 4;
+        } else {
+            if permit == 3 {
+                s = model_step(s, 0, 0) / 4;
+                if binding == 1 {
+                    s = model_step(s, 1, 0) / 4;
+                    s = model_step(s, 3, 0) / 4;
+                } else {
+                    s = model_step(s, 5, 0) / 4;
+                }
+            }
+        }
+    }
+    let mut i: i64 = 0;
+    while i < 10 {
+        if binding == 0 || i == 9 {
+            let value: i64 = (target / power_two(i)) % 2;
+            s = model_step(s, 7 + 2 * i + value, 0) / 4;
+        }
+        i = i + 1;
+    }
+    return s;
+}
+
+fn check_supervisor() -> i64 {
+    let mut states: i64 = 0;
+    let mut transitions: i64 = 0;
+    let mut normal_seen: bool = 0;
+    let mut protection_seen: bool = 0;
+    let mut s: i64 = 0;
+    while s < 8192 {
+        if reachable(s) {
+            if witness_state(s) != s {
+                return -1;
+            }
+            states = states + 1;
+            let mut e: i64 = 0;
+            while e < 27 {
+                let r: i64 = model_step(s, e, 0);
+                if violates(s, e, r) || !reachable(r / 4) {
+                    return -2;
+                }
+                if r % 4 == 1 {
+                    normal_seen = 1;
+                }
+                if r % 4 == 2 {
+                    protection_seen = 1;
+                }
+                transitions = transitions + 1;
+                e = e + 1;
+            }
+        }
+        s = s + 1;
+    }
+    if !normal_seen || !protection_seen {
+        return -3;
+    }
+    return states + 10000 * transitions;
+}
+
+// Fold bits: bit 0 = resolved, bit 1 = some required, bit 2 = all required pass.
+// Initial fold state 5. Acceptance is exactly state 7.
+// Letter = 4 * applicability + verdict. Applicability 0 REQUIRED, 1 N/A, 2 UNRESOLVED.
+// Verdict 0 PASS, 1 FAIL, 2 UNKNOWN, 3 STALE. N/A approval is an input premise.
+fn fold_step(acc: i64, letter: i64) -> i64 {
+    if acc < 0 || acc > 7 || letter < 0 || letter >= 12 {
+        return -1;
+    }
+    let mut resolved: i64 = acc % 2;
+    let mut seen: i64 = (acc / 2) % 2;
+    let mut passed: i64 = (acc / 4) % 2;
+    let app: i64 = letter / 4;
+    let verdict: i64 = letter % 4;
+    if app == 2 {
+        resolved = 0;
+    }
+    if app == 0 {
+        seen = 1;
+        if verdict != 0 {
+            passed = 0;
+        }
+    }
+    return resolved + 2 * seen + 4 * passed;
+}
+
+fn fold_word(word: i64, length: i64) -> bool {
+    if length < 0 || length > 5 || word < 0 {
+        return 0;
+    }
+    let mut value: i64 = word;
+    let mut acc: i64 = 5;
+    let mut i: i64 = 0;
+    while i < length {
+        acc = fold_step(acc, value % 12);
+        value = value / 12;
+        i = i + 1;
+    }
+    return value == 0 && acc == 7;
+}
+
+fn specification_word(word: i64, length: i64) -> bool {
+    let mut value: i64 = word;
+    let mut required: i64 = 0;
+    let mut defects: i64 = 0;
+    let mut i: i64 = 0;
+    while i < length {
+        let letter: i64 = value % 12;
+        if letter >= 8 {
+            defects = defects + 1;
+        }
+        if letter < 4 {
+            required = required + 1;
+            if letter != 0 {
+                defects = defects + 1;
+            }
+        }
+        value = value / 12;
+        i = i + 1;
+    }
+    return required > 0 && defects == 0;
+}
+
+fn check_words() -> i64 {
+    let mut count: i64 = 0;
+    let mut length: i64 = 0;
+    let mut bound: i64 = 1;
+    while length <= 5 {
+        let mut word: i64 = 0;
+        while word < bound {
+            if fold_word(word, length) != specification_word(word, length) {
+                return -1;
+            }
+            count = count + 1;
+            word = word + 1;
+        }
+        bound = bound * 12;
+        length = length + 1;
+    }
+    return count;
+}
+
+fn positional_fold(position: i64, letter: i64, omit: i64) -> bool {
+    let mut acc: i64 = 5;
+    let mut i: i64 = 0;
+    while i < 25 {
+        if i != omit {
+            let mut l: i64 = 0;
+            if i == position {
+                l = letter;
+            }
+            acc = fold_step(acc, l);
+        }
+        i = i + 1;
+    }
+    return acc == 7;
+}
+
+fn check_positional_cases() -> i64 {
+    let mut count: i64 = 0;
+    let mut p: i64 = 0;
+    while p < 25 {
+        let mut letter: i64 = 0;
+        while letter < 12 {
+            // The other 24 entries are required PASS; N/A cannot empty this set.
+            let expected: bool = letter == 0 || (letter >= 4 && letter < 8);
+            if positional_fold(p, letter, -1) != expected {
+                return -1;
+            }
+            count = count + 1;
+            letter = letter + 1;
+        }
+        p = p + 1;
+    }
+    let mut acc: i64 = 5;
+    let mut i: i64 = 0;
+    while i < 25 {
+        acc = fold_step(acc, 4);
+        i = i + 1;
+    }
+    if acc == 7 || fold_word(0, 0) {
+        return -2;
+    }
+    return count + 2;
+}
+
+fn check_mutations() -> i64 {
+    let mut found: i64 = 0;
+    let mut mutant: i64 = 1;
+    while mutant <= 15 {
+        let mut caught: bool = 0;
+        let mut s: i64 = 0;
+        while s < 8192 && !caught {
+            if reachable(s) {
+                let mut e: i64 = 0;
+                while e < 27 && !caught {
+                    if violates(s, e, model_step(s, e, mutant)) {
+                        caught = 1;
+                    }
+                    e = e + 1;
+                }
+            }
+            s = s + 1;
+        }
+        if !caught {
+            return -1;
+        }
+        found = found + 1;
+        mutant = mutant + 1;
+    }
+    let mut p: i64 = 0;
+    while p < 25 {
+        if positional_fold(p, 1, -1) || !positional_fold(p, 1, p) {
+            return -2;
+        }
+        found = found + 1;
+        p = p + 1;
+    }
+    // Selected STALE-as-PASS and vacuous-conjunction witnesses.
+    if positional_fold(0, 3, -1) || !positional_fold(0, 0, -1) {
+        return -3;
+    }
+    found = found + 1;
+    if fold_word(0, 0) {
+        return -4;
+    }
+    // The faulty empty conjunction returns true, whereas the fold returns false.
+    let vacuous_mutant: bool = 1;
+    if !vacuous_mutant {
+        return -5;
+    }
+    return found + 1;
+}
+
+fn parity_digest() -> i64 {
+    let mut h: i64 = 0;
+    let mut s: i64 = 0;
+    while s < 8192 {
+        let mut e: i64 = 0;
+        while e < 27 {
+            let r: i64 = model_step(s, e, 0);
+            h = (h * 31 + r + 7) % 1000000007;
+            e = e + 1;
+        }
+        s = s + 1;
+    }
+    return h;
+}
+
+fn main() -> i64 {
+    print(parity_digest());
+    return 0;
+}

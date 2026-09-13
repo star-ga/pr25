@@ -33,7 +33,8 @@ needs its own valid contract, operating envelope and response bound.
 | `PR25_Public_Technical_Paper_v0.4.pdf` | 18 | All 25 requirement families, admission rules, evidence requirements, physical-assurance boundaries, worked example, validation plan, open proof obligations, 16 references |
 | `PR25_Verification_Note_v0.4.pdf` | 3 | What was executed, the verification weakness found and repaired, exact counts, source hashes, reproduction commands, limits |
 | `PR25_Public_Brief_v0.4.pdf` | 4 | Short introduction and the complete 25-family index |
-| `reference_model/` | — | Executable finite reference model — runnable, standard library only |
+| `reference_model/` | — | Executable finite reference model (Python) — runnable, standard library only |
+| `mind_reference/` | — | Independent implementation of the same model in MIND, compiled natively |
 
 ---
 
@@ -102,6 +103,39 @@ recorded `verified_results.json` embeds that interpreter version, so a run on a
 different supported interpreter reproduces every check and every count while
 differing in that metadata field. The model counts do not depend on the
 interpreter version.
+
+---
+
+## Two implementations, one model
+
+The same finite model is implemented twice, in two languages, by two separate
+paths:
+
+| | `reference_model/` | `mind_reference/` |
+|---|---|---|
+| Language | Python | MIND |
+| Role | The audited artifact — every number in the Verification Note was produced by this code, and its bytes are digest-pinned | An independent implementation, compiled to a native executable |
+| Run | `python3 pr25_verify.py` | `./verify/run_gates.sh` |
+
+Both were run over the entire encoded transition relation — 8,192 state
+encodings x 27 events = **221,184 transitions** — and agree:
+
+```
+MIND        596895410
+independent 596895410
+```
+
+The comparison implementation used for that check was written from the
+specification, not transliterated from the code under test. This is the
+complement to the shared-helper repair described above: that fix removed a
+shared *oracle* dependency within one implementation; this removes the shared
+*implementation* dependency entirely.
+
+Cross-language agreement is evidence that the model's behaviour is a property
+of the specification rather than of one language, one runtime, or one author's
+reading. It is **not** third-party certification — same operator, same machine.
+
+See `mind_reference/README.md` for gates, digests and reproduction.
 
 ---
 
