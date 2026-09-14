@@ -10,6 +10,7 @@ permissions:
 
 env:
   MIND_SOURCE_COMMIT: 1a1b8cf04efcaa8d8dcb408709990d38025cacdd
+  RUST_TOOLCHAIN: nightly-2026-08-08
 
 jobs:
   reference-models:
@@ -26,8 +27,16 @@ jobs:
           python3 pr25_model_check.py
           python3 pr25_verify.py --output /tmp/verified_results.json
 
-      - name: Install Rust 1.85
-        uses: dtolnay/rust-toolchain@1.85.0
+      - name: Install pinned Rust nightly
+        uses: dtolnay/rust-toolchain@3230091d7ef9483f601620abacc570c22cf44d22
+        with:
+          toolchain: nightly-2026-08-08
+
+      - name: Record Rust toolchain
+        run: |
+          set -euo pipefail
+          rustc --version --verbose
+          cargo --version
 
       - name: Install MLIR toolchain
         run: |
