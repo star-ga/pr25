@@ -42,7 +42,7 @@ const MB_UNRESOLVED_APPLICABILITY: i64 = 7
 const MB_EMPTY_REQUIRED_SET: i64 = 8
 const MB_REQUIRED_NONPASS: i64 = 9
 
-fn boundary_verdict(shape_code: i64, app_kind: i64, app_value: i64, verdict_kind: i64, verdict_value: i64) -> i64 {
+pub fn boundary_verdict(shape_code: i64, app_kind: i64, app_value: i64, verdict_kind: i64, verdict_value: i64) -> i64 {
     // Structural refusals first.
     if shape_code != 0 {
         return MB_BAD_SHAPE;
