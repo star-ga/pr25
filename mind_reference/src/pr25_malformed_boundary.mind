@@ -1,0 +1,173 @@
+// PR-25 v0.4: canonical malformed-input boundary classifier.
+// Copyright 2026 STARGA, Inc.
+//
+// PURPOSE
+// -------
+// Compare fail-closed admission-boundary semantics across MIND and Python
+// without pretending Python runtime objects exist at a typed MIND i64 boundary.
+// Structural validity is checked BEFORE admission semantics and every refusal
+// has a distinct code.
+//
+// CANONICAL DESCRIPTOR
+// --------------------
+// shape_code:
+//   0 = exact two-field entry
+//   1 = top-level non-sequence
+//   2 = sequence element is not a pair
+//   3 = pair has one field
+//   4 = pair has more than two fields
+// value kind (app_kind / verdict_kind):
+//   0 = integer
+//   1 = boolean-like
+//   2 = floating/non-integer numeric
+//   3 = string/text
+//   4 = null/other
+// applicability code when kind=integer:
+//   0 = REQUIRED, 1 = NOT_APPLICABLE, 2 = UNRESOLVED
+// verdict code when kind=integer:
+//   0 = PASS, 1 = FAIL, 2 = UNKNOWN, 3 = STALE
+//
+// REFUSAL CODES
+// -------------
+// Zero is deliberately not a verdict. Structural refusal precedes semantic
+// refusal, so a malformed entry can never be reported merely as non-PASS.
+const MB_NO_VERDICT: i64 = 0
+const MB_ADMITTED: i64 = 1
+const MB_BAD_SHAPE: i64 = 2
+const MB_BAD_APPLICABILITY_TYPE: i64 = 3
+const MB_BAD_VERDICT_TYPE: i64 = 4
+const MB_BAD_APPLICABILITY_CODE: i64 = 5
+const MB_BAD_VERDICT_CODE: i64 = 6
+const MB_UNRESOLVED_APPLICABILITY: i64 = 7
+const MB_EMPTY_REQUIRED_SET: i64 = 8
+const MB_REQUIRED_NONPASS: i64 = 9
+
+fn boundary_verdict(shape_code: i64, app_kind: i64, app_value: i64, verdict_kind: i64, verdict_value: i64) -> i64 {
+    // Structural refusals first.
+    if shape_code != 0 {
+        return MB_BAD_SHAPE;
+    }
+    if app_kind != 0 {
+        return MB_BAD_APPLICABILITY_TYPE;
+    }
+    if verdict_kind != 0 {
+        return MB_BAD_VERDICT_TYPE;
+    }
+    if app_value < 0 || app_value > 2 {
+        return MB_BAD_APPLICABILITY_CODE;
+    }
+    if verdict_value < 0 || verdict_value > 3 {
+        return MB_BAD_VERDICT_CODE;
+    }
+
+    // Semantic refusals only after the descriptor is structurally valid.
+    if app_value == 2 {
+        return MB_UNRESOLVED_APPLICABILITY;
+    }
+    if app_value == 1 {
+        // One NOT_APPLICABLE entry leaves the required set empty.
+        return MB_EMPTY_REQUIRED_SET;
+    }
+    if verdict_value != 0 {
+        return MB_REQUIRED_NONPASS;
+    }
+    return MB_ADMITTED;
+}
+
+fn main() -> i64 {
+    let mut total: i64 = 0;
+    let mut admitted: i64 = 0;
+    let mut bad_shape: i64 = 0;
+    let mut bad_app_type: i64 = 0;
+    let mut bad_verdict_type: i64 = 0;
+    let mut bad_app_code: i64 = 0;
+    let mut bad_verdict_code: i64 = 0;
+    let mut unresolved: i64 = 0;
+    let mut empty_required: i64 = 0;
+    let mut required_nonpass: i64 = 0;
+
+    let mut shape_code: i64 = 0;
+    while shape_code <= 4 {
+        let mut app_kind: i64 = 0;
+        while app_kind <= 4 {
+            let mut app_value: i64 = -2;
+            while app_value <= 4 {
+                let mut verdict_kind: i64 = 0;
+                while verdict_kind <= 4 {
+                    let mut verdict_value: i64 = -2;
+                    while verdict_value <= 5 {
+                        let v: i64 = boundary_verdict(shape_code, app_kind, app_value, verdict_kind, verdict_value);
+                        if v == MB_NO_VERDICT {
+                            return 2;
+                        }
+
+                        // Encode case index and verdict together. This makes an
+                        // ordering mistake visible to the record-by-record gate.
+                        print(total * 16 + v);
+
+                        if v == MB_ADMITTED {
+                            admitted = admitted + 1;
+                        } else {
+                            if v == MB_BAD_SHAPE {
+                                bad_shape = bad_shape + 1;
+                            } else {
+                                if v == MB_BAD_APPLICABILITY_TYPE {
+                                    bad_app_type = bad_app_type + 1;
+                                } else {
+                                    if v == MB_BAD_VERDICT_TYPE {
+                                        bad_verdict_type = bad_verdict_type + 1;
+                                    } else {
+                                        if v == MB_BAD_APPLICABILITY_CODE {
+                                            bad_app_code = bad_app_code + 1;
+                                        } else {
+                                            if v == MB_BAD_VERDICT_CODE {
+                                                bad_verdict_code = bad_verdict_code + 1;
+                                            } else {
+                                                if v == MB_UNRESOLVED_APPLICABILITY {
+                                                    unresolved = unresolved + 1;
+                                                } else {
+                                                    if v == MB_EMPTY_REQUIRED_SET {
+                                                        empty_required = empty_required + 1;
+                                                    } else {
+                                                        if v == MB_REQUIRED_NONPASS {
+                                                            required_nonpass = required_nonpass + 1;
+                                                        } else {
+                                                            return 3;
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        total = total + 1;
+                        verdict_value = verdict_value + 1;
+                    }
+                    verdict_kind = verdict_kind + 1;
+                }
+                app_value = app_value + 1;
+            }
+            app_kind = app_kind + 1;
+        }
+        shape_code = shape_code + 1;
+    }
+
+    // Non-vacuity/accounting: every refusal class must be reachable and the
+    // exact finite corpus cardinality is pinned.
+    if total != 7000 {
+        return 4;
+    }
+    if admitted != 1 || bad_shape != 5600 || bad_app_type != 1120 || bad_verdict_type != 224 {
+        return 5;
+    }
+    if bad_app_code != 32 || bad_verdict_code != 12 || unresolved != 4 {
+        return 6;
+    }
+    if empty_required != 4 || required_nonpass != 3 {
+        return 7;
+    }
+    return 0;
+}
