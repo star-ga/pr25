@@ -9,7 +9,8 @@ permissions:
   contents: read
 
 env:
-  MIND_SOURCE_COMMIT: 1a1b8cf04efcaa8d8dcb408709990d38025cacdd
+  MINDC_VERSION: v0.10.2
+  MINDC_LINUX_X64_TARBALL_SHA256: 0c8beb4464f8c7d638a81c2dd8ad5eac81a0ddbc7556be711f00e029d01ef258
 
 jobs:
   reference-models:
@@ -25,9 +26,6 @@ jobs:
           cd reference_model
           python3 pr25_model_check.py
           python3 pr25_verify.py --output /tmp/verified_results.json
-
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
 
       - name: Install MLIR toolchain
         run: |
@@ -49,19 +47,20 @@ jobs:
           mlir-translate --version | head -1
           clang --version | head -1
 
-      - name: Build pinned MIND compiler
+      - name: Install pinned MIND compiler artifact
         run: |
           set -euo pipefail
-          git clone --filter=blob:none https://github.com/star-ga/mind.git /tmp/mind
-          git -C /tmp/mind checkout --detach "$MIND_SOURCE_COMMIT"
-          test "$(git -C /tmp/mind rev-parse HEAD)" = "$MIND_SOURCE_COMMIT"
-          cargo build --manifest-path /tmp/mind/Cargo.toml --release --no-default-features \
-            --features "mlir-build std-surface cross-module-imports" --bin mindc
-          /tmp/mind/target/release/mindc --version
+          url="https://github.com/star-ga/mind/releases/download/${MINDC_VERSION}/mindc-linux-x64.tar.gz"
+          curl --fail --location --retry 5 --retry-all-errors "$url" -o /tmp/mindc-linux-x64.tar.gz
+          echo "${MINDC_LINUX_X64_TARBALL_SHA256}  /tmp/mindc-linux-x64.tar.gz" | sha256sum -c -
+          mkdir -p /tmp/mindc-release
+          tar -xzf /tmp/mindc-linux-x64.tar.gz -C /tmp/mindc-release
+          test -x /tmp/mindc-release/mindc
+          /tmp/mindc-release/mindc --version
 
       - name: Run pure-MIND gates
         env:
-          MINDC: /tmp/mind/target/release/mindc
+          MINDC: /tmp/mindc-release/mindc
         run: |
           set -euo pipefail
           ./mind_reference/verify/run_gates.sh
