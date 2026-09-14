@@ -38,6 +38,13 @@ jobs:
           test -x /tmp/mindc-release/mindc
           /tmp/mindc-release/mindc --version
 
+      - name: Install public MLIR toolchain
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y mlir-20-tools clang-20
+          echo "/usr/lib/llvm-20/bin" >> "$GITHUB_PATH"
+
       - name: Check all public MIND sources
         run: |
           set -euo pipefail
@@ -58,11 +65,22 @@ jobs:
           fi
           echo "PASS: 7000 canonical descriptors enumerated; negative control changes transcript"
 
-      - name: Native gate availability note
+      - name: Execute native MIND malformed-input boundary gate
+        run: |
+          set -euo pipefail
+          MINDC=/tmp/mindc-release/mindc
+          "$MINDC" mind_reference/src/pr25_malformed_boundary.mind \
+            --emit-shared /tmp/pr25_malformed_boundary.so
+          test -s /tmp/pr25_malformed_boundary.so
+          python3 mind_reference/verify/check_malformed_shared.py \
+            /tmp/pr25_malformed_boundary.so
+          sha256sum /tmp/pr25_malformed_boundary.so
+
+      - name: Native project-gate availability note
         run: |
           cat <<'EOF'
-          Public GitHub-hosted runners intentionally do not claim native MIND execution here.
-          mindc build requires the separately provisioned CPU runtime package.
-          The authoritative native gate is mind_reference/verify/run_gates.sh and remains fail-closed.
-          Run it on a runtime-equipped environment before merging changes to native MIND behavior.
+          Gate 7 above is actual native MIND execution through the public --emit-shared path.
+          The full project-level Gates 1-6 still use mindc build and therefore require the
+          separately provisioned CPU runtime package. Their recorded native results remain
+          in mind_reference/GATE_LOG.md; public CI does not fake that unavailable surface.
           EOF
