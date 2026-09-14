@@ -66,15 +66,11 @@ jobs:
           echo "PASS: 7000 canonical descriptors enumerated; negative control changes transcript"
 
       - name: Execute native MIND malformed-input boundary gate
+        env:
+          MINDC: /tmp/mindc-release/mindc
         run: |
           set -euo pipefail
-          MINDC=/tmp/mindc-release/mindc
-          "$MINDC" mind_reference/src/pr25_malformed_boundary.mind \
-            --emit-shared /tmp/pr25_malformed_boundary.so
-          test -s /tmp/pr25_malformed_boundary.so
-          python3 mind_reference/verify/check_malformed_shared.py \
-            /tmp/pr25_malformed_boundary.so
-          sha256sum /tmp/pr25_malformed_boundary.so
+          ./mind_reference/verify/run_malformed_gate.sh
 
       - name: Native project-gate availability note
         run: |
