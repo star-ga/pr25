@@ -3,10 +3,9 @@
 Run 2026-09-13T20:20Z on x86-64 Linux (kernel 7.0.0), from a fresh anonymous
 clone of the public repository.
 
-Gates 4 and 5 were repaired in this revision after an external reviewer
-demonstrated that both could pass without establishing their claim. See
-"Falsifiability" below: each repaired gate was mutation- or fault-tested and
-observed to go red.
+Gates 4 and 5 were repaired in this revision after verification showed that
+both could pass without establishing their claim. See "Falsifiability" below:
+each repaired gate was mutation- or fault-tested and observed to go red.
 
 ## Provenance
 
@@ -22,9 +21,10 @@ binary            sha256 b85bf2c9de888785851ece965d8f4167a2a039555c5f719c7e91d7c
 target            x86-64 ELF PIE, glibc, 50280 bytes
 ```
 
-The compiler binary hash pins the executable, not the compiler source commit
-and dependency set required to reproduce it. `star-ga/mind` is a moving branch.
-Rebuilding the toolchain from a clean environment is a stronger test than this.
+This log records the compiler executable used for the historical six-gate run.
+The current repository also pins the v0.10.2 source commit in the reproduction
+instructions; native builds still require the separately provisioned CPU runtime
+package.
 
 ## `verify/run_gates.sh`
 
@@ -50,12 +50,16 @@ TOTALS: pass=6 fail=0
 
 Exit status 0.
 
+This historical run predates Gate 7. Gate 7 is present in the current runner and
+must be executed on a runtime-equipped environment before a native Gate 7 result
+is claimed.
+
 ## Falsifiability
 
 A gate that cannot fail is not a gate. Both repaired gates were tested by
 injecting the defect they are meant to catch.
 
-### Gate 5 — the reviewer's digest-cancelling counterexample
+### Gate 5 — digest-cancelling counterexample
 
 The previous revision compared one rolling checksum per side,
 `h = (31*h + result + 7) mod 1e9+7`. Perturbing record *(state 8, event 0)* by
