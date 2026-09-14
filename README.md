@@ -34,7 +34,7 @@ needs its own valid contract, operating envelope and response bound.
 | `PR25_Verification_Note_v0.4.pdf` | 3 | What was executed, the verification weakness found and repaired, exact counts, source hashes, reproduction commands, limits |
 | `PR25_Public_Brief_v0.4.pdf` | 4 | Short introduction and the complete 25-family index |
 | `reference_model/` | — | Executable finite reference model (Python) — runnable, standard library only |
-| `mind_reference/` | — | Independent implementation of the same model in MIND, compiled natively |
+| `mind_reference/` | — | Independent MIND implementation plus cross-language gates |
 
 ---
 
@@ -67,80 +67,42 @@ byte-unchanged from the audited source.
 
 ```sh
 cd reference_model
-python3 pr25_model_check.py                        # original checker, unchanged
-python3 pr25_verify.py --output /tmp/verified.json # strengthened verifier
+python3 pr25_model_check.py
+python3 pr25_verify.py --output /tmp/verified.json
 ```
 
 Python 3.10 or later. Standard library only, no dependencies. Do not pass `-O`:
-the original module refuses optimized mode, because its checks are assertions.
+the original module refuses optimized mode because its checks are assertions.
 A nonzero exit is a failed run, not an inconclusive pass.
 
-`pr25_model_check.py` overwrites its adjacent `pr25_model_results.json`; run it
-in a copy if you want to preserve the recorded bytes.
-
-| File | What it is |
-|---|---|
-| `pr25_model_check.py` | Original checker, unchanged |
-| `pr25_model_results.json` | Original recorded results |
-| `pr25_verify.py` | v0.4 strengthened verifier (separately stated oracle) |
-| `verified_results.json` | Executed v0.4 results |
-| `ORIGINAL_README.md` | Historical source explanation |
-| `README_v0.4.md` | v0.4 reference-model notes |
-
-Source digests, as pinned in the Verification Note:
-
-```
-e5b69731fa56e4b0223a6c847c5a46cf23d834052d3b71403b37f3fb93311fe8  pr25_model_check.py
-49f6c73b7cd35f9d7e90be91d4b632edfe83d71718cb554f80d418e532b8d710  pr25_model_results.json
-f886e034955b6143cf6c3673363a8293814f25bde523d1ac5d5a1ac1187ac740  pr25_verify.py
-```
-
-These are integrity checks. They are not signatures, certification, or evidence
-about the physical truth of any input.
-
-**Interpreter note.** The Verification Note's run used CPython 3.13.5. The
-recorded `verified_results.json` embeds that interpreter version, so a run on a
-different supported interpreter reproduces every check and every count while
-differing in that metadata field. The model counts do not depend on the
-interpreter version.
+The three Python artifact digests remain those pinned in the Verification Note.
 
 ---
 
 ## Two implementations, one model
 
-The same finite model is implemented twice, in two languages, by two separate
-paths:
+The same finite model is implemented through separate Python and MIND paths.
+The complete baseline encoded transition relation — 8,192 state encodings × 27
+events = **221,184 transitions** — is compared record-by-record:
 
-| | `reference_model/` | `mind_reference/` |
-|---|---|---|
-| Language | Python | MIND |
-| Role | The audited artifact — every number in the Verification Note was produced by this code, and its bytes are digest-pinned | An independent implementation, compiled to a native executable |
-| Run | `python3 pr25_verify.py` | `./verify/run_gates.sh` |
-
-Both were run over the entire encoded transition relation — 8,192 state
-encodings x 27 events = **221,184 transitions** — and every transition record
-was compared individually:
-
-```
+```text
 221184/221184 transition records identical (8192 x 27)
 ```
 
-The comparison is record-by-record. An earlier revision compared a single
-rolling checksum, which an external reviewer showed was insufficient: the
-reduction admits constructed collisions, so equal digests do not establish
-equal transcripts. The gate now diffs every record and asserts the exact count.
+An earlier checksum-only comparison was insufficient because distinct
+transcripts can share a rolling digest. The current gate compares every record,
+checks both exit statuses, and asserts the exact record count.
 
-The comparison implementation used for that check was written from the
-specification, not transliterated from the code under test. This is the
-complement to the shared-helper repair described above: that fix removed a
-shared *oracle* dependency within one implementation; this removes the shared
-*implementation* dependency entirely.
+PR-25 also defines a shared canonical malformed-input descriptor boundary. The
+MIND and Python implementations independently classify **7,000 bounded
+shape/type/code descriptors**, structural refusals before semantic admission,
+with explicit refusal codes. The gate compares all records and contains a
+negative control that must detect deliberate transcript corruption. Python-only
+runtime-object hazards remain separately tested at the Python boundary rather
+than being presented as fake MIND equivalents.
 
-Cross-language agreement is evidence that the model's behaviour is a property
-of the specification rather than of one language, one runtime, or one author's
-reading. It is **not** third-party certification — same operator, same machine.
-
-See `mind_reference/README.md` for gates, digests and reproduction.
+See `mind_reference/README.md` for the native build, compiler pin, gates, scope,
+and remaining open items.
 
 ---
 
