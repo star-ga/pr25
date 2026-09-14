@@ -4,7 +4,9 @@
 # Requires an mlir-build-enabled mindc. A default-feature mindc FAILS with
 #   error[build][E5003]: public CPU executable requires every source module
 #   to compile natively; refusing to link a runtime-JIT fallback object
-# Build one with:  cargo build --release --features mlir-build --bin mindc
+# Reproducible compiler source pin: MIND v0.10.2 commit
+#   1a1b8cf04efcaa8d8dcb408709990d38025cacdd
+# Build one with: cargo build --release --features mlir-build --bin mindc
 set -euo pipefail
 
 MINDC="${MINDC:-$HOME/mind/target/release/mindc}"
@@ -90,6 +92,38 @@ fi
 
 echo "== GATE 6: supplied comparison script =="
 "$R/verify/check_compiled_output.sh" "$REF3" >/dev/null && ok "check_compiled_output.sh" || no "check_compiled_output.sh"
+
+echo "== GATE 7: canonical malformed-input boundary parity =="
+# The Python model's original 19 malformed-object cases remain language-specific
+# boundary tests. This gate adds a shared canonical descriptor boundary instead
+# of pretending Python None/dict/NaN values are MIND i64 values. Structural
+# refusals precede semantic refusals and each reason is coded explicitly.
+MAL="$(build "$R/src/pr25_malformed_boundary.mind" pr25mal)"
+set +e
+"$MAL" > "$W/mind_malformed.txt"; mal_rc=$?
+python3 "$R/verify/malformed_reference.py" > "$W/ref_malformed.txt"; mal_ref_rc=$?
+set -e
+mal_mind_n=$(wc -l < "$W/mind_malformed.txt")
+mal_ref_n=$(wc -l < "$W/ref_malformed.txt")
+if [ "$mal_rc" -ne 0 ] || [ "$mal_ref_rc" -ne 0 ]; then
+  no "malformed parity: nonzero exit (MIND=$mal_rc reference=$mal_ref_rc)"
+elif [ "$mal_mind_n" -ne 7000 ] || [ "$mal_ref_n" -ne 7000 ]; then
+  no "malformed parity: wrong record count (MIND=$mal_mind_n reference=$mal_ref_n, expected 7000)"
+elif diff -q "$W/mind_malformed.txt" "$W/ref_malformed.txt" >/dev/null; then
+  ok "7000/7000 canonical boundary classifications identical"
+else
+  no "malformed parity MISMATCH: $(diff "$W/mind_malformed.txt" "$W/ref_malformed.txt" | grep -c '^<') differing records"
+  diff "$W/mind_malformed.txt" "$W/ref_malformed.txt" | head -10 || true
+fi
+
+# Negative control: intentionally corrupt the independent transcript. If the
+# diff does not observe this mutation, GATE 7 itself is blind and must fail.
+python3 "$R/verify/malformed_reference.py" --mutant flip-first > "$W/ref_malformed_mutant.txt"
+if diff -q "$W/mind_malformed.txt" "$W/ref_malformed_mutant.txt" >/dev/null; then
+  no "malformed parity negative control was not detected"
+else
+  ok "malformed parity mutation detected (gate can go red)"
+fi
 
 echo; echo "TOTALS: pass=$pass fail=$fail"
 [ "$fail" -eq 0 ] || exit 1
