@@ -28,9 +28,7 @@ jobs:
           python3 pr25_verify.py --output /tmp/verified_results.json
 
       - name: Install pinned Rust nightly
-        uses: dtolnay/rust-toolchain@3230091d7ef9483f601620abacc570c22cf44d22
-        with:
-          toolchain: nightly-2026-08-08
+        uses: dtolnay/rust-toolchain@nightly-2026-08-08
 
       - name: Record Rust toolchain
         run: |
