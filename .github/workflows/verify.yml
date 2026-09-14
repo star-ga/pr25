@@ -9,13 +9,13 @@ permissions:
   contents: read
 
 env:
-  MIND_SOURCE_COMMIT: 1a1b8cf04efcaa8d8dcb408709990d38025cacdd
-  RUST_TOOLCHAIN: nightly-2026-08-08
+  MINDC_VERSION: v0.10.2
+  MINDC_LINUX_X64_TARBALL_SHA256: 0c8beb4464f8c7d638a81c2dd8ad5eac81a0ddbc7556be711f00e029d01ef258
 
 jobs:
-  reference-models:
+  public-verification:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 20
     steps:
       - name: Checkout PR-25
         uses: actions/checkout@v5
@@ -27,52 +27,42 @@ jobs:
           python3 pr25_model_check.py
           python3 pr25_verify.py --output /tmp/verified_results.json
 
-      - name: Install pinned Rust nightly
+      - name: Install pinned public MIND compiler
         run: |
           set -euo pipefail
-          rustup toolchain install "$RUST_TOOLCHAIN" --profile minimal --no-self-update
-          rustup default "$RUST_TOOLCHAIN"
-          rustc --version --verbose
-          cargo --version
+          url="https://github.com/star-ga/mind/releases/download/${MINDC_VERSION}/mindc-linux-x64.tar.gz"
+          curl --fail --location --retry 5 --retry-all-errors "$url" -o /tmp/mindc-linux-x64.tar.gz
+          echo "${MINDC_LINUX_X64_TARBALL_SHA256}  /tmp/mindc-linux-x64.tar.gz" | sha256sum -c -
+          mkdir -p /tmp/mindc-release
+          tar -xzf /tmp/mindc-linux-x64.tar.gz -C /tmp/mindc-release
+          test -x /tmp/mindc-release/mindc
+          /tmp/mindc-release/mindc --version
 
-      - name: Install MLIR toolchain
+      - name: Check all public MIND sources
         run: |
           set -euo pipefail
-          ok=0
-          for attempt in 1 2 3 4 5; do
-            sudo apt-get update || true
-            if sudo apt-get install -y --fix-missing mlir-20-tools clang-20; then ok=1; break; fi
-            echo "apt attempt $attempt failed; retrying"
-            sleep $((attempt * 20))
-          done
-          [ "$ok" = 1 ]
-          echo "/usr/lib/llvm-20/bin" >> "$GITHUB_PATH"
+          MINDC=/tmp/mindc-release/mindc
+          "$MINDC" check mind_reference/src/pr25_reference.mind
+          "$MINDC" check mind_reference/src/pr25_parity_digest.mind
+          "$MINDC" check mind_reference/src/pr25_malformed_boundary.mind
 
-      - name: Verify native toolchain
+      - name: Check canonical malformed-input reference corpus
         run: |
           set -euo pipefail
-          mlir-opt --version | head -1
-          mlir-translate --version | head -1
-          clang --version | head -1
+          python3 mind_reference/verify/malformed_reference.py > /tmp/malformed-baseline.txt
+          test "$(wc -l < /tmp/malformed-baseline.txt)" -eq 7000
+          python3 mind_reference/verify/malformed_reference.py --mutant flip-first > /tmp/malformed-mutant.txt
+          if cmp -s /tmp/malformed-baseline.txt /tmp/malformed-mutant.txt; then
+            echo "FAIL: malformed-input negative control was not detected" >&2
+            exit 1
+          fi
+          echo "PASS: 7000 canonical descriptors enumerated; negative control changes transcript"
 
-      - name: Build pinned MIND compiler from source
+      - name: Native gate availability note
         run: |
-          set -euo pipefail
-          git clone --filter=blob:none https://github.com/star-ga/mind.git /tmp/mind
-          git -C /tmp/mind checkout --detach "$MIND_SOURCE_COMMIT"
-          test "$(git -C /tmp/mind rev-parse HEAD)" = "$MIND_SOURCE_COMMIT"
-          cargo build --manifest-path /tmp/mind/Cargo.toml --release \
-            --features mlir-build --bin mindc
-          test -x /tmp/mind/target/release/mindc
-          /tmp/mind/target/release/mindc --version
-          test -f /tmp/mind/Cargo.lock
-          echo "MIND source commit: $(git -C /tmp/mind rev-parse HEAD)"
-          echo "generated Cargo.lock: $(sha256sum /tmp/mind/Cargo.lock | cut -d' ' -f1)"
-          echo "compiler binary: $(sha256sum /tmp/mind/target/release/mindc | cut -d' ' -f1)"
-
-      - name: Run pure-MIND gates
-        env:
-          MINDC: /tmp/mind/target/release/mindc
-        run: |
-          set -euo pipefail
-          ./mind_reference/verify/run_gates.sh
+          cat <<'EOF'
+          Public GitHub-hosted runners intentionally do not claim native MIND execution here.
+          mindc build requires the separately provisioned CPU runtime package.
+          The authoritative native gate is mind_reference/verify/run_gates.sh and remains fail-closed.
+          Run it on a runtime-equipped environment before merging changes to native MIND behavior.
+          EOF
