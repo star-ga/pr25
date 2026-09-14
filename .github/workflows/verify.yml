@@ -1,0 +1,67 @@
+name: PR-25 verification
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  MIND_SOURCE_COMMIT: 1a1b8cf04efcaa8d8dcb408709990d38025cacdd
+
+jobs:
+  reference-models:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout PR-25
+        uses: actions/checkout@v5
+
+      - name: Run Python reference verification
+        run: |
+          set -euo pipefail
+          cd reference_model
+          python3 pr25_model_check.py
+          python3 pr25_verify.py --output /tmp/verified_results.json
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install MLIR toolchain
+        run: |
+          set -euo pipefail
+          ok=0
+          for attempt in 1 2 3 4 5; do
+            sudo apt-get update || true
+            if sudo apt-get install -y --fix-missing mlir-20-tools clang-20; then ok=1; break; fi
+            echo "apt attempt $attempt failed; retrying"
+            sleep $((attempt * 20))
+          done
+          [ "$ok" = 1 ]
+          echo "/usr/lib/llvm-20/bin" >> "$GITHUB_PATH"
+
+      - name: Verify native toolchain
+        run: |
+          set -euo pipefail
+          mlir-opt --version | head -1
+          mlir-translate --version | head -1
+          clang --version | head -1
+
+      - name: Build pinned MIND compiler
+        run: |
+          set -euo pipefail
+          git clone --filter=blob:none https://github.com/star-ga/mind.git /tmp/mind
+          git -C /tmp/mind checkout --detach "$MIND_SOURCE_COMMIT"
+          test "$(git -C /tmp/mind rev-parse HEAD)" = "$MIND_SOURCE_COMMIT"
+          cargo build --manifest-path /tmp/mind/Cargo.toml --release --no-default-features \
+            --features "mlir-build std-surface cross-module-imports" --bin mindc
+          /tmp/mind/target/release/mindc --version
+
+      - name: Run pure-MIND gates
+        env:
+          MINDC: /tmp/mind/target/release/mindc
+        run: |
+          set -euo pipefail
+          ./mind_reference/verify/run_gates.sh
