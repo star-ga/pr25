@@ -9,8 +9,7 @@ permissions:
   contents: read
 
 env:
-  MINDC_VERSION: v0.10.2
-  MINDC_LINUX_X64_TARBALL_SHA256: 0c8beb4464f8c7d638a81c2dd8ad5eac81a0ddbc7556be711f00e029d01ef258
+  MIND_SOURCE_COMMIT: 1a1b8cf04efcaa8d8dcb408709990d38025cacdd
 
 jobs:
   reference-models:
@@ -26,6 +25,9 @@ jobs:
           cd reference_model
           python3 pr25_model_check.py
           python3 pr25_verify.py --output /tmp/verified_results.json
+
+      - name: Install Rust 1.85
+        uses: dtolnay/rust-toolchain@1.85.0
 
       - name: Install MLIR toolchain
         run: |
@@ -47,20 +49,24 @@ jobs:
           mlir-translate --version | head -1
           clang --version | head -1
 
-      - name: Install pinned MIND compiler artifact
+      - name: Build pinned MIND compiler from source
         run: |
           set -euo pipefail
-          url="https://github.com/star-ga/mind/releases/download/${MINDC_VERSION}/mindc-linux-x64.tar.gz"
-          curl --fail --location --retry 5 --retry-all-errors "$url" -o /tmp/mindc-linux-x64.tar.gz
-          echo "${MINDC_LINUX_X64_TARBALL_SHA256}  /tmp/mindc-linux-x64.tar.gz" | sha256sum -c -
-          mkdir -p /tmp/mindc-release
-          tar -xzf /tmp/mindc-linux-x64.tar.gz -C /tmp/mindc-release
-          test -x /tmp/mindc-release/mindc
-          /tmp/mindc-release/mindc --version
+          git clone --filter=blob:none https://github.com/star-ga/mind.git /tmp/mind
+          git -C /tmp/mind checkout --detach "$MIND_SOURCE_COMMIT"
+          test "$(git -C /tmp/mind rev-parse HEAD)" = "$MIND_SOURCE_COMMIT"
+          cargo build --manifest-path /tmp/mind/Cargo.toml --release \
+            --features mlir-build --bin mindc
+          test -x /tmp/mind/target/release/mindc
+          /tmp/mind/target/release/mindc --version
+          test -f /tmp/mind/Cargo.lock
+          echo "MIND source commit: $(git -C /tmp/mind rev-parse HEAD)"
+          echo "generated Cargo.lock: $(sha256sum /tmp/mind/Cargo.lock | cut -d' ' -f1)"
+          echo "compiler binary: $(sha256sum /tmp/mind/target/release/mindc | cut -d' ' -f1)"
 
       - name: Run pure-MIND gates
         env:
-          MINDC: /tmp/mindc-release/mindc
+          MINDC: /tmp/mind/target/release/mindc
         run: |
           set -euo pipefail
           ./mind_reference/verify/run_gates.sh
