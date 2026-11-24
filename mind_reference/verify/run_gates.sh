@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 # PR-25 pure-MIND gate runner. Builds from source and runs every gate.
 #
-# Requires an mlir-build-enabled mindc. A default-feature mindc FAILS with
-#   error[build][E5003]: public CPU executable requires every source module
-#   to compile natively; refusing to link a runtime-JIT fallback object
-# Build one with:  cargo build --release --features mlir-build --bin mindc
+# Requires the MIND compiler v0.10.4 release. The source is outside the native
+# subset, so the mlir backend is selected below; it needs mlir-opt,
+# mlir-translate and clang on PATH.
+# Release: https://github.com/star-ga/mind/releases/tag/v0.10.4
 set -euo pipefail
 
 MINDC="${MINDC:-$HOME/mind/target/release/mindc}"
-[ -x "$MINDC" ] || { echo "FAIL: no mindc at $MINDC (need --features mlir-build)"; exit 2; }
+[ -x "$MINDC" ] || { echo "FAIL: no mindc at $MINDC (need mindc 0.10.4 with mlir backend)"; exit 2; }
 R="$(cd "$(dirname "$0")/.." && pwd)"
 W="$(mktemp -d)"; trap 'rm -rf "$W"' EXIT
 pass=0; fail=0
@@ -23,7 +23,7 @@ build(){ # <src> <name> -> echoes binary path, or returns nonzero
   # Explicitly propagate compiler failure. Without this a failed check/build
   # could leave an earlier executable in place and the path would still echo,
   # letting a stale binary be accepted as a fresh build.
-  if ! ( cd "$d" && "$MINDC" check src/main.mind && nice -n 15 "$MINDC" build >/dev/null ); then
+  if ! ( cd "$d" && "$MINDC" check src/main.mind && nice -n 15 "$MINDC" build --backend mlir >/dev/null ); then
     echo "BUILD FAILED for $2 ($1)" >&2
     return 1
   fi
