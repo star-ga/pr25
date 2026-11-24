@@ -35,21 +35,30 @@ under test shares its blind spots. This one does not.
 
 ## Reproduce
 
-Requires an `mlir-build`-enabled `mindc`:
+The gates run against the MIND compiler `v0.10.4` release. Download the
+Linux x86-64 archive, verify its published SHA-256, and extract it into a fresh
+folder (use the matching asset on another platform):
 
 ```sh
-git clone https://github.com/star-ga/mind
-cd mind && cargo build --release --features mlir-build --bin mindc
+curl -fLO https://github.com/star-ga/mind/releases/download/v0.10.4/mindc-linux-x64.tar.gz
+curl -fLO https://github.com/star-ga/mind/releases/download/v0.10.4/mindc-linux-x64.tar.gz.sha256
+sha256sum -c mindc-linux-x64.tar.gz.sha256
+mkdir -p mindc-0.10.4
+tar -xzf mindc-linux-x64.tar.gz -C mindc-0.10.4
+./mindc-0.10.4/mindc --version
 ```
-
-A default-feature `mindc` will **fail** with `error[build][E5003]` — `mlir-build`
-is not in `default`.
 
 Then:
 
 ```sh
-MINDC=/path/to/mindc ./verify/run_gates.sh
+MINDC="$PWD/mindc-0.10.4/mindc" ./verify/run_gates.sh
 ```
+
+`run_gates.sh` selects the `mlir` backend, because the source is outside the
+native subset; the MLIR backend needs `mlir-opt`, `mlir-translate` and `clang`
+on `PATH`. The archive also ships `std/`, `stdlib_manifest.txt` and
+`SHA256SUMS`; the binary embeds the standard-library sources, so installing only
+`mindc` is sufficient.
 
 ## Gates
 
@@ -110,8 +119,9 @@ invalidation event, not elapsed physical time.
    individually cross-verified.
 2. **Malformed-input comparison.** The Python side rejects 19 malformed
    examples via a strict helper; there is no cross-language equivalent here.
-3. **Compiler pin.** `MINDC` is built from the `star-ga/mind` default branch,
-   which moves. `GATE_LOG.md` records the compiler binary hash and version, but
-   not the compiler source commit and dependency set needed to recreate that
-   binary from a clean environment. Rebuilding the toolchain from scratch is a
-   stronger test than a fresh PR-25 checkout on a provisioned machine.
+3. **Compiler pin.** The reproduction instructions pin the `star-ga/mind`
+   `v0.10.4` release archive and verify its published SHA-256. `GATE_LOG.md`
+   records the compiler binary hash and version used for the recorded run
+   (`mind 0.10.2`) and remains a historical record. Rebuilding the toolchain
+   from source is a stronger test than a fresh PR-25 checkout on a provisioned
+   machine.
