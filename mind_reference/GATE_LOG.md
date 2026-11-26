@@ -101,3 +101,36 @@ exit status 0.
 Note that the byte-identity *result* was unchanged by the repair: the rebuild
 hash is `b85bf2c9de888785` both before and after. The binary was reproducible;
 the old gate simply never established it.
+
+## 2026-11-26: native exporter gate (`verify/run_native_export_gate.sh`)
+
+Compiler: the public mindc 0.10.4 release (`mind 0.10.4`, archive SHA-256 `b887ddedaa03a5a5d7124456d4b433bce5782b66d9dacac58c9dcf9083dc8003`, compiler binary SHA-256 `eb0b96d6f0f52c65199df22824e31a93b27119bff60dc239f530a36c28bc0502`), native backend only. x86-64 Linux.
+
+Command: `MINDC=<path>/mindc-0.10.4/mindc ./verify/run_native_export_gate.sh`
+
+Result: TOTALS pass=7 fail=0, exit 0. Verbatim output; the compiler progress lines that name a scratch folder are left out:
+
+```
+== mindc ==
+mind 0.10.4
+== GATE 1: check + build, native backend ==
+  PASS  builds on the native backend (83308 bytes)
+== GATE 2: two clean builds, byte-identical ==
+  PASS  binaries equal (507bd94acfb1a48d)
+== GATE 3: run, pinned output SHA-256, summary lines ==
+  PASS  two runs exit 0, identical output
+  PASS  output SHA-256 equals the pin (9685099398fd7f8a)
+  PASS  first 5 lines equal EXPECTED_OUTPUT.txt (3078 / 83106 / 271453 / 302 / 42)
+  PASS  summary lines 'X 27 15 6 42 33' and 'K 0' present
+== GATE 4: Python leg, states, 83,106 transitions, per-variant counts ==
+    ok   state list equals the Python reachable set (3078 states, ascending)
+    ok   depth, parent state and parent event of every state equal the Python search (differences 0)
+    ok   all 83106 (state, event) transition records equal the Python step (differences 0)
+    ok   variants 1..15: states, transitions, found, trace length and events of the separated oracle (bad: [])
+    ok   variants 1..15: original checker result, 3,088 / 83,376 and no hit for 7..15 (bad: [])
+    ok   fold variants: 27 listed, all detected, as in the Python model
+    ok   X line equals the Python counts (fold, separated, original, totals)
+  PASS  Python leg: every compared item equal
+
+TOTALS: pass=7 fail=0
+```
