@@ -1,0 +1,118 @@
+// Checkers of the PR-25 data exporter. Two modes, no shared function with the model rule.
+//   prop_sep : the separated oracle. It states the nine normal conditions as s % 512 == 511
+//              (specification_normal) and never calls implementation_normal, power_two,
+//              protection or model_step.
+//   prop_old : the checker that shares the helper with the model (the original checker). It calls
+//              implementation_normal(s, mutant), the same helper that model_step calls.
+// Property codes (properties of the public checkers, in their order):
+//   1 invalid_output_code                       2 normal_output_without_current_conditions
+//   3 invalidated_permit_reused                 4 normal_output_on_unpermitted_event
+//   5 start_without_ready_permit                6 continue_without_active_permit
+//   7 consumed_permit_replayed                  8 invalid_post_grant_state
+//   9 active_authority_retained_after_invalidation
+//  10 available_protective_output_blocked      11 unavailable_recovery_claimed
+// Both return 0 when no property is hit, else the first property hit in the order of the public checkers.
+import model;
+
+pub fn prop_sep(s: i64, e: i64, r: i64) -> i64 {
+    if r < 0 || r >= 32768 {
+        return 1;
+    }
+    let next: i64 = r / 4;
+    let out: i64 = r % 4;
+    let permit: i64 = (s / 1024) % 4;
+    let npermit: i64 = (next / 1024) % 4;
+    if out == 1 && (specification_normal(s) == 0) {
+        return 2;
+    }
+    if out == 1 && s / 4096 != 1 {
+        return 3;
+    }
+    if out == 1 && e != 1 && e != 2 {
+        return 4;
+    }
+    if out == 1 && e == 1 && permit != 1 {
+        return 5;
+    }
+    if out == 1 && e == 2 && permit != 2 {
+        return 6;
+    }
+    if out == 1 && (npermit != 2 || next / 4096 != 1 || (specification_normal(next) == 0)) {
+        return 8;
+    }
+    if npermit == 2 && ((specification_normal(next) == 0) || next / 4096 != 1) {
+        return 9;
+    }
+    let invalidation: i64 = e >= 7 && (e - 7) % 2 == 0;
+    let needs: i64 = e == 5 || (invalidation && permit == 2 && (specification_normal(next) == 0));
+    let ready: i64 = (next / 256) % 2 == 1;
+    if needs && ready && out != 2 {
+        return 10;
+    }
+    if out == 2 && (ready == 0) {
+        return 11;
+    }
+    return 0;
+}
+
+pub fn prop_old(s: i64, e: i64, r: i64, m: i64) -> i64 {
+    let next: i64 = r / 4;
+    let out: i64 = r % 4;
+    let permit: i64 = (s / 1024) % 4;
+    if out == 1 && (implementation_normal(s, m) == 0) {
+        return 2;
+    }
+    if out == 1 && s / 4096 != 1 {
+        return 3;
+    }
+    if out == 1 && e == 1 && permit != 1 {
+        return 5;
+    }
+    if out == 1 && e == 2 && permit != 2 {
+        return 6;
+    }
+    if e == 4 && out == 1 {
+        return 7;
+    }
+    let invalidation: i64 = e >= 7 && (e - 7) % 2 == 0;
+    let needs: i64 = e == 5 || (invalidation && permit == 2 && (implementation_normal(next, m) == 0));
+    let ready: i64 = (next / 256) % 2 == 1;
+    if needs && ready && out != 2 {
+        return 10;
+    }
+    if out == 2 && (ready == 0) {
+        return 11;
+    }
+    return 0;
+}
+
+// Faulty fold forms of the two witness variants (the omit-one-slot form is positional_fold with an omit index).
+// STALE counted as PASS: a STALE verdict (letter 3) is read as PASS (letter 0).
+pub fn stale_as_pass(letter: i64) -> i64 {
+    if letter % 4 == 3 {
+        return letter - 3;
+    }
+    return letter;
+}
+
+// Empty required set admitted: the fold accepts when resolved (bit 0) and all required pass (bit 2),
+// and does not need the "some required" bit (bit 1).
+pub fn vacuous_accepts(acc: i64) -> i64 {
+    return acc % 2 == 1 && (acc / 4) % 2 == 1;
+}
+
+// Digest of the whole transition table of one mutant (0 = baseline) over all 8192 x 27 pairs.
+// h = (h * 1000003 + record + 2) mod 4294967291, state and event ascending. A change of one record always changes h.
+pub fn digest_full(m: i64) -> i64 {
+    let mut h: i64 = 7;
+    let mut s: i64 = 0;
+    while s < 8192 {
+        let mut e: i64 = 0;
+        while e < 27 {
+            h = (h * 1000003 + model_step(s, e, m) + 2) % 4294967291;
+            e = e + 1;
+        }
+        s = s + 1;
+    }
+    return h;
+}

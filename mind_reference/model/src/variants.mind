@@ -1,0 +1,207 @@
+// Variant tables of the PR-25 data exporter. The model rule is model_step in model.mind (one place).
+//   M m states transitions found prop len events...  separated oracle, full variant graph, first hit in search order
+//   R m differ                                       transition records that differ from the baseline (variant-reachable states)
+//   P m c1..c11                                      separated oracle, first property hit per transition, per property
+//   O m states edges found prop len events...        checker that shares the helper, stops at the first hit
+//   D k detected                                     fold-side variant k = 1..27
+import model;
+import props;
+import out;
+
+// One breadth-first search in the graph of mutant m. mode 0 = separated oracle (full graph),
+// mode 1 = shared-helper checker (stops at the first hit, as the original checker does).
+// res: 0 states, 1 edges, 2 found, 3 property, 4 trace length. trace: events from the start to the hit.
+pub fn run_bfs(m: i64, mode: i64, vis: i64, queue: i64, pe: i64, pv: i64, trace: i64, res: i64, cnt: i64) -> i64 {
+    let mut s: i64 = 0;
+    while s < 8192 {
+        st(vis, s, 0);
+        s = s + 1;
+    }
+    let mut k: i64 = 0;
+    while k < 12 {
+        st(cnt, k, 0);
+        k = k + 1;
+    }
+    let mut head: i64 = 0;
+    let mut tail: i64 = 1;
+    let mut edges: i64 = 0;
+    st(queue, 0, 1023);
+    st(vis, 1023, 1);
+    st(pe, 1023, 0 - 1);
+    let mut found: i64 = 0;
+    let mut vs: i64 = 0 - 1;
+    let mut ve: i64 = 0 - 1;
+    let mut fp: i64 = 0;
+    let mut stop: i64 = 0;
+    while head < tail && stop == 0 {
+        let cur: i64 = ld(queue, head);
+        head = head + 1;
+        let mut e: i64 = 0;
+        while e < 27 && stop == 0 {
+            let r: i64 = model_step(cur, e, m);
+            edges = edges + 1;
+            let mut p: i64 = 0;
+            if mode == 0 {
+                p = prop_sep(cur, e, r);
+            } else {
+                p = prop_old(cur, e, r, m);
+            }
+            if p != 0 {
+                st(cnt, p, ld(cnt, p) + 1);
+                if found == 0 {
+                    found = 1;
+                    vs = cur;
+                    ve = e;
+                    fp = p;
+                }
+                if mode == 1 {
+                    stop = 1;
+                }
+            }
+            if stop == 0 {
+                let n: i64 = r / 4;
+                if ld(vis, n) == 0 {
+                    st(vis, n, 1);
+                    st(pe, n, cur);
+                    st(pv, n, e);
+                    st(queue, tail, n);
+                    tail = tail + 1;
+                }
+            }
+            e = e + 1;
+        }
+    }
+    let mut len: i64 = 0;
+    if found == 1 {
+        let mut w: i64 = vs;
+        let mut back: i64 = 0;
+        while ld(pe, w) >= 0 {
+            st(trace, 32 + back, ld(pv, w));
+            back = back + 1;
+            w = ld(pe, w);
+        }
+        let mut j: i64 = back - 1;
+        while j >= 0 {
+            st(trace, len, ld(trace, 32 + j));
+            len = len + 1;
+            j = j - 1;
+        }
+        st(trace, len, ve);
+        len = len + 1;
+    }
+    st(res, 0, tail);
+    st(res, 1, edges);
+    st(res, 2, found);
+    st(res, 3, fp);
+    st(res, 4, len);
+    return 0;
+}
+
+fn put_trace(o: i64, trace: i64, len: i64) -> i64 {
+    put_val(o, len);
+    let mut i: i64 = 0;
+    while i < len {
+        put_val(o, ld(trace, i));
+        i = i + 1;
+    }
+    return 0;
+}
+
+// Variants 1..15. acc: 0 = graph variants found by the separated oracle, 1 = found by the shared-helper checker.
+pub fn export_variants(o: i64, vis: i64, queue: i64, pe: i64, pv: i64, trace: i64, res: i64, cnt: i64, acc: i64) -> i64 {
+    let mut m: i64 = 1;
+    while m <= 15 {
+        run_bfs(m, 0, vis, queue, pe, pv, trace, res, cnt);
+        put_tag(o, 77);
+        put_val(o, m);
+        put_val(o, ld(res, 0));
+        put_val(o, 27 * ld(res, 0));
+        put_val(o, ld(res, 2));
+        put_val(o, ld(res, 3));
+        put_trace(o, trace, ld(res, 4));
+        end_line(o);
+        st(acc, 0, ld(acc, 0) + ld(res, 2));
+        let mut differ: i64 = 0;
+        let mut s: i64 = 0;
+        while s < 8192 {
+            if ld(vis, s) == 1 {
+                let mut e: i64 = 0;
+                while e < 27 {
+                    if model_step(s, e, m) != model_step(s, e, 0) {
+                        differ = differ + 1;
+                    }
+                    e = e + 1;
+                }
+            }
+            s = s + 1;
+        }
+        put_tag(o, 82);
+        put_val(o, m);
+        put_val(o, differ);
+        end_line(o);
+        put_tag(o, 80);
+        put_val(o, m);
+        let mut p: i64 = 1;
+        while p <= 11 {
+            put_val(o, ld(cnt, p));
+            p = p + 1;
+        }
+        end_line(o);
+        run_bfs(m, 1, vis, queue, pe, pv, trace, res, cnt);
+        put_tag(o, 79);
+        put_val(o, m);
+        put_val(o, ld(res, 0));
+        put_val(o, ld(res, 1));
+        put_val(o, ld(res, 2));
+        put_val(o, ld(res, 3));
+        put_trace(o, trace, ld(res, 4));
+        end_line(o);
+        st(acc, 1, ld(acc, 1) + ld(res, 2));
+        m = m + 1;
+    }
+    return 0;
+}
+
+// Fold-side variants: 25 omit-one-slot (k = 1..25), STALE as PASS (26), empty set admitted (27).
+// detected = the faulty form accepts the witness input and the real fold rejects it. acc 2 = count detected.
+pub fn export_fold_variants(o: i64, acc: i64) -> i64 {
+    let mut p: i64 = 0;
+    while p < 25 {
+        let mut d: i64 = 0;
+        if positional_fold(p, 1, 0 - 1) == 0 && positional_fold(p, 1, p) == 1 {
+            d = 1;
+        }
+        put_tag(o, 68);
+        put_val(o, p + 1);
+        put_val(o, d);
+        end_line(o);
+        st(acc, 2, ld(acc, 2) + d);
+        p = p + 1;
+    }
+    let mut d26: i64 = 0;
+    if positional_fold(0, 3, 0 - 1) == 0 && positional_fold(0, stale_as_pass(3), 0 - 1) == 1 {
+        d26 = 1;
+    }
+    put_tag(o, 68);
+    put_val(o, 26);
+    put_val(o, d26);
+    end_line(o);
+    st(acc, 2, ld(acc, 2) + d26);
+    // 25 NOT_APPLICABLE slots: the real fold ends in a state other than 7; the vacuous form accepts it.
+    let mut a: i64 = 5;
+    let mut i: i64 = 0;
+    while i < 25 {
+        a = fold_step(a, 4);
+        i = i + 1;
+    }
+    let mut d27: i64 = 0;
+    if a != 7 && vacuous_accepts(a) == 1 {
+        d27 = 1;
+    }
+    put_tag(o, 68);
+    put_val(o, 27);
+    put_val(o, d27);
+    end_line(o);
+    st(acc, 2, ld(acc, 2) + d27);
+    return 0;
+}

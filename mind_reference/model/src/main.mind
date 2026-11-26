@@ -1,0 +1,254 @@
+// PR-25 data exporter. Native backend, i64 only (a bool value is only a direct condition).
+// The model rule is model.mind, a token-level copy of the public reference source (one place).
+// This file holds no model rule: it enumerates, indexes, prints, and checks digests.
+// Output: first the five reference-check lines (as the public reference prints them),
+// then tagged lines, one number list per line:
+//   S idx enc depth parentIdx parentEvent f0..f9 permit binding flags   (one per state)
+//   T idx v0..v26      v = 4 * nextIdx + output                          (one per state)
+//   H d1 d2            two digests of the whole index-form transition table
+//   M R P O            graph variants 1..15 (see variants.mind)
+//   D k detected       fold-side variant k = 1..27
+//   X fold sepGraph oldGraph sepTotal oldTotal   counts of detected variants by each checker
+//   G m digest         digest of the full transition table of mutant m = 0..15
+//   F m got want      a digest that differs from the pin (m = -1: the index-form table)
+//   K n                number of digests that differ from the pinned values (pins.mind); exit 6 if n > 0
+import model;
+import props;
+import variants;
+import pins;
+import out;
+
+// Breadth-first enumeration from the initial state 1023, events in ascending order.
+// Fills queue, depth, parent encoding and parent event; returns the state count.
+fn enumerate(vis: i64, queue: i64, depth: i64, pe: i64, pv: i64) -> i64 {
+    let mut head: i64 = 0;
+    let mut tail: i64 = 1;
+    st(queue, 0, 1023);
+    st(vis, 1023, 1);
+    st(depth, 1023, 0);
+    st(pe, 1023, 0 - 1);
+    st(pv, 1023, 0 - 1);
+    while head < tail {
+        let s: i64 = ld(queue, head);
+        head = head + 1;
+        let mut e: i64 = 0;
+        while e < 27 {
+            let n: i64 = model_step(s, e, 0) / 4;
+            if ld(vis, n) == 0 {
+                st(vis, n, 1);
+                st(depth, n, ld(depth, s) + 1);
+                st(pe, n, s);
+                st(pv, n, e);
+                st(queue, tail, n);
+                tail = tail + 1;
+            }
+            e = e + 1;
+        }
+    }
+    return tail;
+}
+
+// Flag column: bit0 nine conditions hold (specification form), bit1 recovery ready,
+// bit2 some event gives NORMAL, bit3 PROTECTIVE, bit4 binding fresh, bit5 initial,
+// bit6 NO_ASSURED_OUTPUT.
+fn flag_column(s: i64) -> i64 {
+    let mut f: i64 = 0;
+    if specification_normal(s) {
+        f = f + 1;
+    }
+    if (s / 256) % 2 == 1 {
+        f = f + 2;
+    }
+    let mut seen_n: i64 = 0;
+    let mut seen_p: i64 = 0;
+    let mut seen_a: i64 = 0;
+    let mut e: i64 = 0;
+    while e < 27 {
+        let out: i64 = model_step(s, e, 0) % 4;
+        if out == 1 {
+            seen_n = 1;
+        }
+        if out == 2 {
+            seen_p = 1;
+        }
+        if out == 3 {
+            seen_a = 1;
+        }
+        e = e + 1;
+    }
+    f = f + 4 * seen_n + 8 * seen_p;
+    if s / 4096 == 1 {
+        f = f + 16;
+    }
+    if s == 1023 {
+        f = f + 32;
+    }
+    f = f + 64 * seen_a;
+    return f;
+}
+
+fn export_states(o: i64, vis: i64, depth: i64, pe: i64, pv: i64, idx: i64) -> i64 {
+    let mut s: i64 = 0;
+    while s < 8192 {
+        if ld(vis, s) == 1 {
+            put_tag(o, 83);
+            put_val(o, ld(idx, s));
+            put_val(o, s);
+            put_val(o, ld(depth, s));
+            if ld(pe, s) < 0 {
+                put_val(o, 0 - 1);
+                put_val(o, 0 - 1)
+            } else {
+                put_val(o, ld(idx, ld(pe, s)));
+                put_val(o, ld(pv, s))
+            }
+            let mut b: i64 = 0;
+            while b < 10 {
+                put_val(o, (s / power_two(b)) % 2);
+                b = b + 1;
+            }
+            put_val(o, (s / 1024) % 4);
+            put_val(o, s / 4096);
+            put_val(o, flag_column(s));
+            end_line(o)
+        }
+        s = s + 1;
+    }
+    s = 0;
+    while s < 8192 {
+        if ld(vis, s) == 1 {
+            put_tag(o, 84);
+            put_val(o, ld(idx, s));
+            let mut e: i64 = 0;
+            while e < 27 {
+                let r: i64 = model_step(s, e, 0);
+                put_val(o, 4 * ld(idx, r / 4) + r % 4);
+                e = e + 1;
+            }
+            end_line(o)
+        }
+        s = s + 1;
+    }
+    return 0;
+}
+
+fn put_pin_check(o: i64, tag: i64, m: i64, got: i64, want: i64) -> i64 {
+    put_tag(o, tag);
+    put_val(o, m);
+    put_val(o, got);
+    put_val(o, want);
+    end_line(o);
+    return 0;
+}
+
+// Digest of the exported (index-form) table, two moduli: h = (h * mult + 4 * idx + out + 2) mod p.
+fn table_digest(vis: i64, idx: i64, which: i64) -> i64 {
+    let mut mult: i64 = 1000003;
+    let mut p: i64 = 4294967291;
+    if which == 1 {
+        mult = 999983;
+        p = 4294967279;
+    }
+    let mut h: i64 = 7;
+    let mut s: i64 = 0;
+    while s < 8192 {
+        if ld(vis, s) == 1 {
+            let mut e: i64 = 0;
+            while e < 27 {
+                let r: i64 = model_step(s, e, 0);
+                h = (h * mult + 4 * ld(idx, r / 4) + r % 4 + 2) % p;
+                e = e + 1;
+            }
+        }
+        s = s + 1;
+    }
+    return h;
+}
+
+fn main() -> i64 {
+    let checks: i64 = run_reference_checks();
+    if checks != 0 {
+        return 3;
+    }
+    let o: i64 = __mind_alloc(16);
+    __mind_store_i64(o, __mind_alloc(1048576 + 64));
+    __mind_store_i64(o + 8, 0);
+    let vis: i64 = __mind_alloc(8 * 8192);
+    let queue: i64 = __mind_alloc(8 * 8192);
+    let depth: i64 = __mind_alloc(8 * 8192);
+    let pe: i64 = __mind_alloc(8 * 8192);
+    let pv: i64 = __mind_alloc(8 * 8192);
+    let idx: i64 = __mind_alloc(8 * 8192);
+    let trace: i64 = __mind_alloc(8 * 64);
+    let res: i64 = __mind_alloc(8 * 8);
+    let cnt: i64 = __mind_alloc(8 * 12);
+    let acc: i64 = __mind_alloc(8 * 4);
+    let mut s: i64 = 0;
+    while s < 8192 {
+        st(vis, s, 0);
+        st(idx, s, 0 - 1);
+        s = s + 1;
+    }
+    st(acc, 0, 0);
+    st(acc, 1, 0);
+    st(acc, 2, 0);
+    let count: i64 = enumerate(vis, queue, depth, pe, pv);
+    // The enumerated set must equal the closed-form reachable set of the reference.
+    let mut rank: i64 = 0;
+    s = 0;
+    while s < 8192 {
+        if ld(vis, s) != reachable(s) {
+            return 4;
+        }
+        if ld(vis, s) == 1 {
+            st(idx, s, rank);
+            rank = rank + 1;
+        }
+        s = s + 1;
+    }
+    if rank != count {
+        return 5;
+    }
+    export_states(o, vis, depth, pe, pv, idx);
+    let ta: i64 = table_digest(vis, idx, 0);
+    let tb: i64 = table_digest(vis, idx, 1);
+    put_tag(o, 72);
+    put_val(o, ta);
+    put_val(o, tb);
+    end_line(o);
+    export_variants(o, vis, queue, pe, pv, trace, res, cnt, acc);
+    export_fold_variants(o, acc);
+    put_tag(o, 88);
+    put_val(o, ld(acc, 2));
+    put_val(o, ld(acc, 0));
+    put_val(o, ld(acc, 1));
+    put_val(o, ld(acc, 2) + ld(acc, 0));
+    put_val(o, ld(acc, 2) + ld(acc, 1));
+    end_line(o);
+    let mut bad: i64 = 0;
+    if ta != pin_table_a() || tb != pin_table_b() {
+        bad = bad + 1;
+        put_pin_check(o, 70, 0 - 1, ta, pin_table_a())
+    }
+    let mut m: i64 = 0;
+    while m <= 15 {
+        let g: i64 = digest_full(m);
+        put_tag(o, 71);
+        put_val(o, m);
+        put_val(o, g);
+        end_line(o);
+        if g != pin_full(m) {
+            bad = bad + 1;
+            put_pin_check(o, 70, m, g, pin_full(m))
+        }
+        m = m + 1;
+    }
+    put_tag(o, 75);
+    put_val(o, bad);
+    end_line(o);
+    flush(o);
+    if bad > 0 {
+        return 6;
+    }
+    return 0;
+}

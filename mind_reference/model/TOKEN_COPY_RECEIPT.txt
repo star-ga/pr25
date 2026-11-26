@@ -1,0 +1,163 @@
+# Receipt: every line of src/model.mind that differs from the public ../src/pr25_reference.mind.
+# Command, run in this folder:  diff ../src/pr25_reference.mind src/model.mind
+# Lines marked < are the public file, lines marked > are the copy. Nothing else differs.
+# Meaning: bool values are written as i64 (the native backend refuses a bool value outside a direct condition),
+# ! x is written as (x == 0), fn is pub fn, main is run_reference_checks, and the two header lines say so.
+1,2c1,2
+< // PR-25 v0.4: pure-MIND scalar reference-model source candidate.
+< // NOT COMPILED OR EXECUTED in the accompanying audit. NOT a robot controller.
+---
+> // PR-25 v0.4 model rule: token-level copy of mind_reference/src/pr25_reference.mind for the native backend.
+> // Changes: bool values are written as i64, ! as == 0, fn as pub fn, main as run_reference_checks; see ../TOKEN_COPY_RECEIPT.txt.
+18c18
+< fn power_two(n: i64) -> i64 {
+---
+> pub fn power_two(n: i64) -> i64 {
+28c28
+< fn implementation_normal(s: i64, mutant: i64) -> bool {
+---
+> pub fn implementation_normal(s: i64, mutant: i64) -> i64 {
+41c41
+< fn specification_normal(s: i64) -> bool {
+---
+> pub fn specification_normal(s: i64) -> i64 {
+46c46
+< fn protection(s: i64, mutant: i64) -> i64 {
+---
+> pub fn protection(s: i64, mutant: i64) -> i64 {
+59c59
+< fn model_step(s: i64, event: i64, mutant: i64) -> i64 {
+---
+> pub fn model_step(s: i64, event: i64, mutant: i64) -> i64 {
+74c74
+<             let mut good: bool = implementation_normal(s, mutant) && binding == 1;
+---
+>             let mut good: i64 = implementation_normal(s, mutant) && binding == 1;
+88c88
+<                 let mut good: bool = implementation_normal(s, mutant) && binding == 1;
+---
+>                 let mut good: i64 = implementation_normal(s, mutant) && binding == 1;
+128c128
+<                                 if permit == 2 && !implementation_normal(changed, mutant) {
+---
+>                                 if permit == 2 && (implementation_normal(changed, mutant) == 0) {
+145c145
+< fn violates(s: i64, event: i64, result: i64) -> bool {
+---
+> pub fn violates(s: i64, event: i64, result: i64) -> i64 {
+154c154
+<         if !specification_normal(s) || s / 4096 != 1 {
+---
+>         if (specification_normal(s) == 0) || s / 4096 != 1 {
+166c166
+<         if next_permit != 2 || next / 4096 != 1 || !specification_normal(next) {
+---
+>         if next_permit != 2 || next / 4096 != 1 || (specification_normal(next) == 0) {
+170c170
+<     if next_permit == 2 && (!specification_normal(next) || next / 4096 != 1) {
+---
+>     if next_permit == 2 && ((specification_normal(next) == 0) || next / 4096 != 1) {
+173,175c173,175
+<     let invalidation: bool = event >= 7 && (event - 7) % 2 == 0;
+<     let needs: bool = event == 5 || (invalidation && permit == 2 && !specification_normal(next));
+<     let ready: bool = (next / 256) % 2 == 1;
+---
+>     let invalidation: i64 = event >= 7 && (event - 7) % 2 == 0;
+>     let needs: i64 = event == 5 || (invalidation && permit == 2 && (specification_normal(next) == 0));
+>     let ready: i64 = (next / 256) % 2 == 1;
+179c179
+<     if output == 2 && !ready {
+---
+>     if output == 2 && (ready == 0) {
+185c185
+< fn reachable(s: i64) -> bool {
+---
+> pub fn reachable(s: i64) -> i64 {
+200c200
+< fn witness_state(target: i64) -> i64 {
+---
+> pub fn witness_state(target: i64) -> i64 {
+237c237
+< fn check_supervisor() -> i64 {
+---
+> pub fn check_supervisor() -> i64 {
+240,241c240,241
+<     let mut normal_seen: bool = 0;
+<     let mut protection_seen: bool = 0;
+---
+>     let mut normal_seen: i64 = 0;
+>     let mut protection_seen: i64 = 0;
+252c252
+<                 if violates(s, e, r) || !reachable(r / 4) {
+---
+>                 if violates(s, e, r) || (reachable(r / 4) == 0) {
+267c267
+<     if !normal_seen || !protection_seen {
+---
+>     if (normal_seen == 0) || (protection_seen == 0) {
+277c277
+< fn fold_step(acc: i64, letter: i64) -> i64 {
+---
+> pub fn fold_step(acc: i64, letter: i64) -> i64 {
+298c298
+< fn fold_word(word: i64, length: i64) -> bool {
+---
+> pub fn fold_word(word: i64, length: i64) -> i64 {
+313c313
+< fn specification_word(word: i64, length: i64) -> bool {
+---
+> pub fn specification_word(word: i64, length: i64) -> i64 {
+335c335
+< fn check_words() -> i64 {
+---
+> pub fn check_words() -> i64 {
+354c354
+< fn positional_fold(position: i64, letter: i64, omit: i64) -> bool {
+---
+> pub fn positional_fold(position: i64, letter: i64, omit: i64) -> i64 {
+370c370
+< fn check_positional_cases() -> i64 {
+---
+> pub fn check_positional_cases() -> i64 {
+377c377
+<             let expected: bool = letter == 0 || (letter >= 4 && letter < 8);
+---
+>             let expected: i64 = letter == 0 || (letter >= 4 && letter < 8);
+398c398
+< fn check_mutations() -> i64 {
+---
+> pub fn check_mutations() -> i64 {
+402c402
+<         let mut caught: bool = 0;
+---
+>         let mut caught: i64 = 0;
+404c404
+<         while s < 8192 && !caught {
+---
+>         while s < 8192 && (caught == 0) {
+407c407
+<                 while e < 27 && !caught {
+---
+>                 while e < 27 && (caught == 0) {
+416c416
+<         if !caught {
+---
+>         if (caught == 0) {
+424c424
+<         if positional_fold(p, 1, -1) || !positional_fold(p, 1, p) {
+---
+>         if positional_fold(p, 1, -1) || (positional_fold(p, 1, p) == 0) {
+431c431
+<     if positional_fold(0, 3, -1) || !positional_fold(0, 0, -1) {
+---
+>     if positional_fold(0, 3, -1) || (positional_fold(0, 0, -1) == 0) {
+439,440c439,440
+<     let vacuous_mutant: bool = 1;
+<     if !vacuous_mutant {
+---
+>     let vacuous_mutant: i64 = 1;
+>     if (vacuous_mutant == 0) {
+446c446
+< fn main() -> i64 {
+---
+> pub fn run_reference_checks() -> i64 {

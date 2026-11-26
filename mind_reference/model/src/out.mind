@@ -1,0 +1,70 @@
+// Output helpers of the PR-25 data exporter: table load/store and a buffered number writer.
+// No model logic.
+pub fn ld(t: i64, i: i64) -> i64 {
+    return __mind_load_i64(t + 8 * i);
+}
+
+pub fn st(t: i64, i: i64, v: i64) -> i64 {
+    __mind_store_i64(t + 8 * i, v);
+    return 0;
+}
+
+pub fn flush(o: i64) -> i64 {
+    let base: i64 = __mind_load_i64(o);
+    let pos: i64 = __mind_load_i64(o + 8);
+    let mut done: i64 = 0;
+    while done < pos {
+        let w: i64 = __mind_write(1, base + done, pos - done, 0 - 1);
+        if w <= 0 {
+            return 1;
+        }
+        done = done + w;
+    }
+    __mind_store_i64(o + 8, 0);
+    return 0;
+}
+
+pub fn put_byte(o: i64, c: i64) -> i64 {
+    let base: i64 = __mind_load_i64(o);
+    let pos: i64 = __mind_load_i64(o + 8);
+    __mind_store_i8(base + pos, c);
+    __mind_store_i64(o + 8, pos + 1);
+    if pos + 1 >= 1048000 {
+        flush(o)
+    }
+    return 0;
+}
+
+pub fn put_num(o: i64, v: i64) -> i64 {
+    let mut x: i64 = v;
+    if x < 0 {
+        put_byte(o, 45);
+        x = 0 - x;
+    }
+    let mut d: i64 = 1;
+    while d * 10 <= x {
+        d = d * 10;
+    }
+    while d > 0 {
+        put_byte(o, 48 + (x / d) % 10);
+        d = d / 10;
+    }
+    return 0;
+}
+
+// Tag letter, then each number preceded by one space.
+pub fn put_tag(o: i64, c: i64) -> i64 {
+    put_byte(o, c);
+    return 0;
+}
+
+pub fn put_val(o: i64, v: i64) -> i64 {
+    put_byte(o, 32);
+    put_num(o, v);
+    return 0;
+}
+
+pub fn end_line(o: i64) -> i64 {
+    put_byte(o, 10);
+    return 0;
+}
