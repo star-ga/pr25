@@ -32,9 +32,9 @@ build(){ # <src> <name> -> echoes binary path, or returns nonzero
   echo "$out"
 }
 
-echo "== GATE 1: check + native build =="
+echo "== GATE 1: check + build (MLIR route) =="
 REF="$(build "$R/src/pr25_reference.mind" pr25ref)"
-[ -x "$REF" ] && ok "reference builds natively ($(stat -c%s "$REF") bytes)" || no "reference build"
+[ -x "$REF" ] && ok "reference builds, MLIR route ($(stat -c%s "$REF") bytes)" || no "reference build"
 
 echo "== GATE 2: output vs EXPECTED_OUTPUT.txt =="
 "$REF" > "$W/out.txt"

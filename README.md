@@ -34,7 +34,7 @@ needs its own valid contract, operating envelope and response bound.
 | `PR25_Verification_Note_v0.4.pdf` | 3 | What was executed, the verification weakness found and repaired, exact counts, source hashes, reproduction commands, limits |
 | `PR25_Public_Brief_v0.4.pdf` | 4 | Short introduction and the complete 25-family index |
 | `reference_model/` | — | Executable finite reference model (Python) — runnable, standard library only |
-| `mind_reference/` | — | Independent implementation of the same model in MIND, compiled natively |
+| `mind_reference/` | — | Independent implementation of the same model in MIND, built through the MLIR route of mindc 0.10.4 |
 
 ---
 
@@ -114,7 +114,7 @@ paths:
 | | `reference_model/` | `mind_reference/` |
 |---|---|---|
 | Language | Python | MIND |
-| Role | The audited artifact — every number in the Verification Note was produced by this code, and its bytes are digest-pinned | An independent implementation, compiled to a native executable |
+| Role | The audited artifact — every number in the Verification Note was produced by this code, and its bytes are digest-pinned | An independent implementation, built through the MLIR route of mindc 0.10.4 |
 | Run | `python3 pr25_verify.py` | `./verify/run_gates.sh` |
 
 Both were run over the entire encoded transition relation — 8,192 state
@@ -126,17 +126,18 @@ was compared individually:
 ```
 
 The comparison is record-by-record. An earlier revision compared a single
-rolling checksum, which an external reviewer showed was insufficient: the
+rolling checksum, which a review showed was insufficient: the
 reduction admits constructed collisions, so equal digests do not establish
 equal transcripts. The gate now diffs every record and asserts the exact count.
 
 The comparison implementation used for that check was written from the
-specification, not transliterated from the code under test. This is the
-complement to the shared-helper repair described above: that fix removed a
-shared *oracle* dependency within one implementation; this removes the shared
-*implementation* dependency entirely.
+specification comments in the MIND source header; this is not proven by files
+in this repository. The intent is the complement to the shared-helper repair
+described above: that fix removed a shared *oracle* dependency within one
+implementation; this aims to remove the shared *implementation* dependency.
 
-Cross-language agreement is evidence that the model's behaviour is a property
+Cross-language agreement on the v0.4 baseline (221,184 records, recorded
+2026-09-13 in `mind_reference/GATE_LOG.md`) is evidence that the model's behaviour is a property
 of the specification rather than of one language, one runtime, or one author's
 reading. It is **not** third-party certification — same operator, same machine.
 
@@ -158,7 +159,7 @@ implementation defect, or an inadequate validation argument.
 
 **Counterexamples should improve the registry — not be forced into it.**
 
-Open an issue, or use the discussion tab.
+Open an issue.
 
 ---
 

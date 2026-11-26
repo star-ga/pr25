@@ -2,7 +2,7 @@
 
 This directory holds a **second, independent implementation** of the PR-25
 finite admission/permit model, written in [MIND](https://github.com/star-ga/mind)
-and compiled to a native executable.
+and built through the MLIR route of mindc 0.10.4.
 
 It does **not** replace `../reference_model/` (Python). The Verification Note
 pins SHA-256 digests to those Python bytes, and every number recorded in the
@@ -24,14 +24,14 @@ The comparison is record-by-record, not a checksum. An earlier revision of this
 gate compared a single rolling digest, `h = (31*h + result + 7) mod 1e9+7`, on
 each side. That is **not** sufficient: the reduction admits constructed
 collisions — `+1` on one record and `-31` on the next cancel exactly — so equal
-digests do not establish equal transcripts. An external reviewer demonstrated
+digests do not establish equal transcripts. A review demonstrated
 this with a two-record counterexample. The gate now diffs all 221,184 records,
 asserts the exact record count, and checks both processes' exit statuses.
 
 The comparison implementation (`verify/independent_reference.py`) was written
-from the specification comments in the MIND source header, **not** transliterated
-from the MIND function bodies. That matters: a reference derived from the code
-under test shares its blind spots. This one does not.
+from the specification comments in the MIND source header; this is not proven by
+files in this repository. That matters: a reference derived from the code under
+test shares its blind spots. The intent is that this one does not.
 
 ## Reproduce
 
@@ -64,10 +64,10 @@ on `PATH`. The archive also ships `std/`, `stdlib_manifest.txt` and
 
 | # | Gate | Result |
 |---|------|--------|
-| 1 | `mindc check` + native build | ELF PIE, 50,280 bytes |
+| 1 | `mindc check` + build (MLIR route) | ELF PIE, 50,280 bytes (run of 2026-09-13, mind 0.10.2) |
 | 2 | Output vs `EXPECTED_OUTPUT.txt` | 5/5 counts exact |
 | 3 | Run-to-run determinism (10x) | 1 distinct output hash |
-| 4 | Rebuild byte-identity (clean rebuild) | `b85bf2c9de888785` |
+| 4 | Rebuild byte-identity (clean rebuild) | `b85bf2c9de888785` (run of 2026-09-13, mind 0.10.2) |
 | 5 | **Cross-language parity, all 221,184 transition records** | 221184/221184 identical |
 | 6 | Supplied comparison script | PASS |
 
@@ -93,7 +93,7 @@ GATE_LOG.md                          verbatim gate output + digests
 ## What this evidence licenses
 
 **Can be said:** the PR-25 finite reference model exists as pure MIND source,
-compiles natively, executes to the expected counts, is deterministic run-to-run,
+builds through the MLIR route of mindc 0.10.4, executes to the expected counts, is deterministic run-to-run,
 is byte-identical across clean rebuilds, and agrees record-for-record with an
 independently written reference on all 221,184 modeled transitions.
 

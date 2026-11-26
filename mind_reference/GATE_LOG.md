@@ -1,9 +1,11 @@
 # Gate log — verbatim output
 
+Historical record of the 2026-09-13 run with mind 0.10.2. With mind 0.10.4 this source builds only through the MLIR route.
+
 Run 2026-09-13T20:20Z on x86-64 Linux (kernel 7.0.0), from a fresh anonymous
 clone of the public repository.
 
-Gates 4 and 5 were repaired in this revision after an external reviewer
+Gates 4 and 5 were repaired in this revision after a review
 demonstrated that both could pass without establishing their claim. See
 "Falsifiability" below: each repaired gate was mutation- or fault-tested and
 observed to go red.
