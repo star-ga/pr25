@@ -2,9 +2,11 @@
 
 A MIND program that searches every reachable state of the PR-25 finite reference
 model and prints each record as text. It builds with the public `mindc 0.10.4`
-release on the **native backend** (the pure-MIND ELF backend; no MLIR, no LLVM,
-no clang). The files outside this folder that need the MLIR route are listed in
-`../README.md`; they are unchanged.
+release on the **native backend** (`mindc build --backend native`). The compiler
+reports `via the pure-MIND native-ELF backend (zero MLIR/LLVM/clang)`; the build
+also finishes with an empty `PATH` (command in "Build and run"), so it starts no tool
+that it must find on `PATH`. The files outside this folder that need the MLIR route
+are listed in `../README.md`; their MIND sources are unchanged.
 
 ```
 Mind.toml
@@ -13,6 +15,7 @@ src/props.mind     two property checkers (separated oracle; checker that shares 
 src/variants.mind  the 15 graph variants: search, first counterexample, changed records
 src/out.mind       table helpers and a buffered number writer
 src/pins.mind      pinned digests of the transition tables of the 16 rule sets
+mkpins.sh          writes src/pins.mind from the H and G lines of one run of the exporter
 src/main.mind      enumeration, flag column, printing, digest self-check
 TOKEN_COPY_RECEIPT.txt   every line of model.mind that differs from the public source
 ```
@@ -41,14 +44,26 @@ cd mind_reference/model
 sha256sum export.txt
 ```
 
-Expected: `mindc --version` prints `mind 0.10.4`; `check` and `build` exit 0; the
-binary is 83,308 bytes with SHA-256
-`507bd94acfb1a48d0f009bf8d2e6f327c343f08390620b01811e109f6fe6322d` (two clean builds
-give the same bytes); the program exits 0; `export.txt` is 593,917 bytes, 6,267
+To show that the build needs no tool on `PATH`, build with an empty `PATH` and
+compare the binary (the compiler is given by its full path):
+
+```sh
+env -i PATH=/nonexistent "$MINDC" build --backend native; echo $?
+sha256sum target/debug/pr25export
+```
+
+Expected: exit status 0 and the same binary SHA-256 as below. This shows that the
+build does not look up a tool on `PATH`; it does not show how the compiler is
+written inside.
+
+Expected: `mindc --version` prints `mind 0.10.4` on its first line; `check` and `build` exit 0; the
+binary is 85,683 bytes with SHA-256
+`7a6614cf2c153b530897a8968b6d5b6adbeaf7c874778f7be14a57f20177fabb` (two clean builds
+give the same bytes); the program exits 0; `export.txt` is 594,043 bytes, 6,279
 lines, with SHA-256
 
 ```
-9685099398fd7f8a6a201eb899dd080809e5197ea539de00f33cc602839d76d5
+4b228f500b68f57d2f5f773527f9933fdf7225ee4f0b995604f55bdaf4d954b6
 ```
 
 The binary hash is a record of one build, not a pin: the gate pins the output.
@@ -64,6 +79,8 @@ One tagged line per item, numbers separated by one space.
 | `T` x 3,078 | transitions of that state for events 0..26, each as `4 * next index + output` (83,106 records) |
 | `H` | two digests of the whole index-form transition table |
 | `M`, `O`, `P`, `R` x 15 | per variant 1..15: full graph size and first counterexample of the separated oracle (`M`); the same for the checker that shares the model helper (`O`); first property hit per transition (`P`); number of records that differ from the baseline (`R`) |
+| `Q` x 11 | per property code 1..11: number of the 15 graph variants whose first hit is that property, and the sum of the `P` counts of that property |
+| `C` | counts of the exported data: `C 3078 83106 27 15 27 42` (states, transitions, events, graph variants, fold variants, variants) |
 | `D` x 27 | the 27 fold variants, each with its detected flag |
 | `X` | `X 27 15 6 42 33`: detected by the fold, by the separated oracle on graphs, by the shared-helper checker on graphs, and the two totals |
 | `G` x 16 | digest of the full 8,192 x 27 transition table of each rule set (baseline and 15 variants) |
@@ -82,10 +99,23 @@ MINDC="$PWD/mindc-0.10.4/mindc" ./mind_reference/verify/run_native_export_gate.s
 The script builds twice and compares the binaries, runs the program twice, compares
 the output with the pinned SHA-256, the first five lines with `EXPECTED_OUTPUT.txt`
 and the summary lines, and then runs the **Python leg**: it compares every state, all
-83,106 transitions and the per-variant counts with the public Python model in
-`../../reference_model/`. The script fails closed when a tool or an input is
+83,106 transitions, the per-variant lines (the `M`, `O`, `R` and `P` lines of the 15
+graph variants, with the property codes) and the total lines (`Q`, `C`, `X`) with the
+public Python model in `../../reference_model/`. It prints the count of compared
+values (423). The script fails closed when a tool or an input is
 missing. The Python leg is a cross-language comparison with the v0.4 Python model;
 a later version replaces it with a MIND comparison.
+
+## Regenerate the pins
+
+`src/pins.mind` holds the digests that the program checks itself against. To write it
+again from one run of the exporter:
+
+```sh
+./mkpins.sh export.txt > src/pins.mind
+```
+
+The script reads the `H` and `G` lines of `export.txt`. The gate fails when the output differs from its pinned SHA-256.
 
 ## What this does not show
 

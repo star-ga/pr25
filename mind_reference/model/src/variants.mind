@@ -4,6 +4,9 @@
 //   P m c1..c11                                      separated oracle, first property hit per transition, per property
 //   O m states edges found prop len events...        checker that shares the helper, stops at the first hit
 //   D k detected                                     fold-side variant k = 1..27
+//   Q p firstHitVariants hitTransitions              property p = 1..11: number of the 15 graph variants whose first hit is p;
+//                                                    sum over the 15 graph variants of the P count of p
+//   C states transitions events graphVariants foldVariants variants   counts of the exported data
 import model;
 import props;
 import out;
@@ -107,7 +110,9 @@ fn put_trace(o: i64, trace: i64, len: i64) -> i64 {
     return 0;
 }
 
-// Variants 1..15. acc: 0 = graph variants found by the separated oracle, 1 = found by the shared-helper checker.
+// Variants 1..15. acc: 0 = graph variants found by the separated oracle, 1 = found by the shared-helper checker,
+// 3 = graph variants exported, 4 = fold variants exported, 8 + p = graph variants whose first hit is property p,
+// 20 + p = sum of the P counts of property p.
 pub fn export_variants(o: i64, vis: i64, queue: i64, pe: i64, pv: i64, trace: i64, res: i64, cnt: i64, acc: i64) -> i64 {
     let mut m: i64 = 1;
     while m <= 15 {
@@ -121,6 +126,10 @@ pub fn export_variants(o: i64, vis: i64, queue: i64, pe: i64, pv: i64, trace: i6
         put_trace(o, trace, ld(res, 4));
         end_line(o);
         st(acc, 0, ld(acc, 0) + ld(res, 2));
+        st(acc, 3, ld(acc, 3) + 1);
+        if ld(res, 2) == 1 {
+            st(acc, 8 + ld(res, 3), ld(acc, 8 + ld(res, 3)) + 1)
+        }
         let mut differ: i64 = 0;
         let mut s: i64 = 0;
         while s < 8192 {
@@ -144,6 +153,7 @@ pub fn export_variants(o: i64, vis: i64, queue: i64, pe: i64, pv: i64, trace: i6
         let mut p: i64 = 1;
         while p <= 11 {
             put_val(o, ld(cnt, p));
+            st(acc, 20 + p, ld(acc, 20 + p) + ld(cnt, p));
             p = p + 1;
         }
         end_line(o);
@@ -176,6 +186,7 @@ pub fn export_fold_variants(o: i64, acc: i64) -> i64 {
         put_val(o, d);
         end_line(o);
         st(acc, 2, ld(acc, 2) + d);
+        st(acc, 4, ld(acc, 4) + 1);
         p = p + 1;
     }
     let mut d26: i64 = 0;
@@ -187,6 +198,7 @@ pub fn export_fold_variants(o: i64, acc: i64) -> i64 {
     put_val(o, d26);
     end_line(o);
     st(acc, 2, ld(acc, 2) + d26);
+    st(acc, 4, ld(acc, 4) + 1);
     // 25 NOT_APPLICABLE slots: the real fold ends in a state other than 7; the vacuous form accepts it.
     let mut a: i64 = 5;
     let mut i: i64 = 0;
@@ -203,5 +215,29 @@ pub fn export_fold_variants(o: i64, acc: i64) -> i64 {
     put_val(o, d27);
     end_line(o);
     st(acc, 2, ld(acc, 2) + d27);
+    st(acc, 4, ld(acc, 4) + 1);
+    return 0;
+}
+
+// Q lines (one per property code) and the C line. The totals are summed here, in the exporter, from the same
+// per-variant results that the M and P lines print.
+pub fn export_totals(o: i64, acc: i64, states: i64) -> i64 {
+    let mut p: i64 = 1;
+    while p <= 11 {
+        put_tag(o, 81);
+        put_val(o, p);
+        put_val(o, ld(acc, 8 + p));
+        put_val(o, ld(acc, 20 + p));
+        end_line(o);
+        p = p + 1;
+    }
+    put_tag(o, 67);
+    put_val(o, states);
+    put_val(o, 27 * states);
+    put_val(o, 27);
+    put_val(o, ld(acc, 3));
+    put_val(o, ld(acc, 4));
+    put_val(o, ld(acc, 3) + ld(acc, 4));
+    end_line(o);
     return 0;
 }

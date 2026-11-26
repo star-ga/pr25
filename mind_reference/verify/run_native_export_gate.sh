@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
 # PR-25 native exporter gate. Builds model/ with the public mindc 0.10.4 release on the
 # NATIVE backend (no MLIR, no clang), twice from clean folders, runs it, pins the SHA-256
-# of its raw output, and compares every state and all 83,106 transitions and the per-variant
-# counts with the public Python model in ../../reference_model (the Python leg).
+# of its raw output, and compares every state, all 83,106 transitions, the per-variant lines
+# (M, O, R, P, with the property codes) and the total lines (Q, C, X) with the public Python
+# model in ../../reference_model (the Python leg). It prints the count of compared values.
 # Usage: MINDC=/path/to/mindc-0.10.4/mindc ./verify/run_native_export_gate.sh
 # Exit 0 only when every gate passes; exit 2 when a tool or input is missing.
 set -euo pipefail
 
-OUT_SHA="9685099398fd7f8a6a201eb899dd080809e5197ea539de00f33cc602839d76d5"
+OUT_SHA="4b228f500b68f57d2f5f773527f9933fdf7225ee4f0b995604f55bdaf4d954b6"
 X_LINE="X 27 15 6 42 33"
 
 [ -n "${MINDC:-}" ] && [ -x "$MINDC" ] || { echo "FAIL: set MINDC to the mindc 0.10.4 release binary"; exit 2; }
@@ -56,7 +57,7 @@ head -5 "$W/o1.txt" | diff -q - "$R/EXPECTED_OUTPUT.txt" >/dev/null \
 grep -qx "$X_LINE" "$W/o1.txt" && grep -qx "K 0" "$W/o1.txt" \
   && ok "summary lines '$X_LINE' and 'K 0' present" || no "summary lines differ"
 
-echo "== GATE 4: Python leg, states, 83,106 transitions, per-variant counts =="
+echo "== GATE 4: Python leg, states, 83,106 transitions, per-variant lines, total lines =="
 # Python is only a comparison here, on a scratch copy of the public reference_model.
 cp -r "$R/../reference_model" "$W/refmodel"
 if python3 -I - "$W/refmodel" "$W/o1.txt" <<'PY'
@@ -100,7 +101,13 @@ for i, e in enumerate(encs):
         nxt, out = idx[prow[e][k][0]], prow[e][k][1]
         if len(vals) != 27 or vals[k] != 4 * nxt + out: bad += 1
 check(bad == 0 and total == 83106, 'all %d (state, event) transition records equal the Python step (differences %d)' % (total, bad))
-# per variant: full graph size, first counterexample of the separated oracle, original checker
+# per variant: every per-variant line (M, O, R, P) and the total lines (Q, C) of the exporter
+# against the public Python model. compared counts every value that is compared.
+PROPS = ('invalid_output_code', 'normal_output_without_current_conditions', 'invalidated_permit_reused',
+         'normal_output_on_unpermitted_event', 'start_without_ready_permit', 'continue_without_active_permit',
+         'consumed_permit_replayed', 'invalid_post_grant_state', 'active_authority_retained_after_invalidation',
+         'available_protective_output_blocked', 'unavailable_recovery_claimed')
+code = lambda name: PROPS.index(name) + 1 if name else 0
 saved = m.normal_ok
 SUP = ('omit_commit_recheck', 'omit_context_check', 'omit_continuation_recheck',
        'allow_consumed_replay', 'recovery_requires_mission_authority', 'recovery_requires_logging')
@@ -110,39 +117,64 @@ def setup(k):
     drop = v.FIELD_NAMES[k - 7]
     m.normal_ok = lambda s, d=drop: all(getattr(s, f) for f in v.FIELD_NAMES[:9] if f != d)
     return None
-def full(mut):
-    st = m.State(); seen = {st}; qq = deque([st])
+def variant_graph(mut):
+    """Reachable states of the variant, with the first oracle property of every transition."""
+    st = m.State(); seen = {st}; qq = deque([st]); counts = [0] * 12; differ = 0
     while qq:
         s = qq.popleft()
         for e in v.EVENT_NAMES:
-            ns, _ = m.step(s, e, mut)
+            ns, o = m.step(s, e, mut)
+            cur = m.normal_ok; m.normal_ok = saved
+            bs, bo = m.step(s, e, None)
+            m.normal_ok = cur
+            if (v.pack(ns), o) != (v.pack(bs), bo): differ += 1
+            counts[code(v.oracle_violation(s, e, ns, o))] += 1
             if ns not in seen: seen.add(ns); qq.append(ns)
-    return len(seen), 27 * len(seen)
-def tr(r): return [v.EVENT_NAMES.index(e) for e in r['trace']] if r['status'] == 'COUNTEREXAMPLE' else None
-M = {int(l[1]): list(map(int, l[2:])) for l in lines if l[0] == 'M'}
-O = {int(l[1]): list(map(int, l[2:])) for l in lines if l[0] == 'O'}
-badM, badO, sep, old = [], [], 0, 0
+    return len(seen), 27 * len(seen), counts, differ
+def events_of(r): return [v.EVENT_NAMES.index(e) for e in r['trace']]
+byTag = {t: {} for t in 'MORP'}
+for l in lines:
+    if l[0] in byTag: byTag[l[0]][int(l[1])] = list(map(int, l[2:]))
+compared = 0
+bad = {'M': [], 'O': [], 'R': [], 'P': []}
+firstHit = [0] * 12; hitSum = [0] * 12; sep = old = 0
 for k in range(1, 16):
     mut = setup(k)
-    st, ed = full(mut)
-    g = v.graph_check(mut); t = tr(g)
-    exp = [st, ed, 1, None, len(t)] + t if t else None
-    got = M[k]
-    if not (exp and got[0:3] == exp[0:3] and got[4] == exp[4] and got[5:] == exp[5:]): badM.append(k)
-    sep += 1 if t else 0
-    c = m.check_model(mut); t2 = tr(c); old += 1 if t2 else 0
-    got = O[k]
-    if t2: expo = [c['states_discovered'], c['transitions_checked'], 1, None, len(t2)] + t2; okk = got[:3] == expo[:3] and got[4] == expo[4] and got[5:] == expo[5:]
-    else: okk = got == [c['reachable_states'], c['transitions_checked'], 0, 0, 0]
-    if not okk: badO.append(k)
+    st, ed, counts, differ = variant_graph(mut)
+    g = v.graph_check(mut); t = events_of(g)
+    expM = [st, ed, 1, code(g['property']), len(t)] + t
+    expP = counts[1:]
+    c = m.check_model(mut)
+    expO = ([c['states_discovered'], c['transitions_checked'], 1, code(c['property']), len(events_of(c))] + events_of(c)
+            if c['status'] == 'COUNTEREXAMPLE' else [c['reachable_states'], c['transitions_checked'], 0, 0, 0])
+    for tag, exp in (('M', expM), ('O', expO), ('R', [differ]), ('P', expP)):
+        compared += len(exp)
+        if byTag[tag].get(k) != exp: bad[tag].append(k)
+    sep += g['status'] == 'COUNTEREXAMPLE'; old += c['status'] == 'COUNTEREXAMPLE'
+    firstHit[code(g['property'])] += 1
+    hitSum = [a + b for a, b in zip(hitSum, counts)]
 m.normal_ok = saved
-check(not badM, 'variants 1..15: states, transitions, found, trace length and events of the separated oracle (bad: %s)' % badM)
-check(not badO, 'variants 1..15: original checker result, 3,088 / 83,376 and no hit for 7..15 (bad: %s)' % badO)
+for tag, what in (('M', 'separated oracle: states, transitions, found, property code, trace'),
+                  ('O', 'original checker: states, transitions, found, property code, trace (3,088 / 83,376 and no hit for 7..15)'),
+                  ('R', 'records that differ from the baseline'),
+                  ('P', 'first property hit per transition, 11 property counts')):
+    check(not bad[tag], 'variants 1..15, %s lines: %s (bad: %s)' % (tag, what, bad[tag]))
+Q = {int(l[1]): list(map(int, l[2:])) for l in lines if l[0] == 'Q'}
+expQ = {p: [firstHit[p], hitSum[p]] for p in range(1, 12)}
+compared += 22
+check(Q == expQ, 'total lines Q 1..11: first-hit variants and hit transitions per property equal the Python sums')
 vm = m.verdict_mutations(); fold = sum(1 for r in vm if r['caught'])
 Dl = [l for l in lines if l[0] == 'D']
 check(len(Dl) == 27 == len(vm) and all(l[2] == '1' for l in Dl) and fold == 27, 'fold variants: 27 listed, all detected, as in the Python model')
+Cl = [list(map(int, l[1:])) for l in lines if l[0] == 'C']
+expC = [len(order), 27 * len(order), 27, 15, 27, 42]
+compared += 6
+check(Cl == [expC], 'total line C: states, transitions, events, graph variants, fold variants, variants equal the Python counts')
 Xl = [l for l in lines if l[0] == 'X'][0][1:]
+compared += 5
 check(list(map(int, Xl)) == [fold, sep, old, fold + sep, fold + old], 'X line equals the Python counts (fold, separated, original, totals)')
+check(sep == 15, 'every graph variant has a separated-oracle hit')
+print('compared values (per-variant and total lines): %d' % compared)
 sys.exit(1 if fails else 0)
 PY
 then ok "Python leg: every compared item equal"; else no "Python leg: a comparison failed"; fi

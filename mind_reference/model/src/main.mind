@@ -8,6 +8,8 @@
 //   H d1 d2            two digests of the whole index-form transition table
 //   M R P O            graph variants 1..15 (see variants.mind)
 //   D k detected       fold-side variant k = 1..27
+//   Q p firstHitVariants hitTransitions       totals per property code 1..11 (see variants.mind)
+//   C states transitions events graphVariants foldVariants variants   counts of the exported data
 //   X fold sepGraph oldGraph sepTotal oldTotal   counts of detected variants by each checker
 //   G m digest         digest of the full transition table of mutant m = 0..15
 //   F m got want      a digest that differs from the pin (m = -1: the index-form table)
@@ -182,16 +184,18 @@ fn main() -> i64 {
     let trace: i64 = __mind_alloc(8 * 64);
     let res: i64 = __mind_alloc(8 * 8);
     let cnt: i64 = __mind_alloc(8 * 12);
-    let acc: i64 = __mind_alloc(8 * 4);
+    let acc: i64 = __mind_alloc(8 * 40);
     let mut s: i64 = 0;
     while s < 8192 {
         st(vis, s, 0);
         st(idx, s, 0 - 1);
         s = s + 1;
     }
-    st(acc, 0, 0);
-    st(acc, 1, 0);
-    st(acc, 2, 0);
+    s = 0;
+    while s < 40 {
+        st(acc, s, 0);
+        s = s + 1;
+    }
     let count: i64 = enumerate(vis, queue, depth, pe, pv);
     // The enumerated set must equal the closed-form reachable set of the reference.
     let mut rank: i64 = 0;
@@ -218,6 +222,7 @@ fn main() -> i64 {
     end_line(o);
     export_variants(o, vis, queue, pe, pv, trace, res, cnt, acc);
     export_fold_variants(o, acc);
+    export_totals(o, acc, count);
     put_tag(o, 88);
     put_val(o, ld(acc, 2));
     put_val(o, ld(acc, 0));

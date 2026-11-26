@@ -1,6 +1,6 @@
 # Gate log — verbatim output
 
-Historical record of the 2026-09-13 run with mind 0.10.2. With mind 0.10.4 this source builds only through the MLIR route.
+Historical record of the 2026-09-13 run with mind 0.10.2 (the sections before the 2026-11-26 entry). With mind 0.10.4 this source builds only through the MLIR route.
 
 Run 2026-09-13T20:20Z on x86-64 Linux (kernel 7.0.0), from a fresh anonymous
 clone of the public repository.
@@ -108,29 +108,41 @@ Compiler: the public mindc 0.10.4 release (`mind 0.10.4`, archive SHA-256 `b887d
 
 Command: `MINDC=<path>/mindc-0.10.4/mindc ./verify/run_native_export_gate.sh`
 
-Result: TOTALS pass=7 fail=0, exit 0. Verbatim output; the compiler progress lines that name a scratch folder are left out:
+Result: TOTALS pass=7 fail=0, exit 0. The Python leg compares the per-variant lines (M, O, R, P) and the total lines (Q, C, X) of the exporter, 423 values. Verbatim output; the compiler progress lines that name a scratch folder are left out:
 
 ```
 == mindc ==
 mind 0.10.4
 == GATE 1: check + build, native backend ==
-  PASS  builds on the native backend (83308 bytes)
+  PASS  builds on the native backend (85683 bytes)
 == GATE 2: two clean builds, byte-identical ==
-  PASS  binaries equal (507bd94acfb1a48d)
+  PASS  binaries equal (7a6614cf2c153b53)
 == GATE 3: run, pinned output SHA-256, summary lines ==
   PASS  two runs exit 0, identical output
-  PASS  output SHA-256 equals the pin (9685099398fd7f8a)
+  PASS  output SHA-256 equals the pin (4b228f500b68f57d)
   PASS  first 5 lines equal EXPECTED_OUTPUT.txt (3078 / 83106 / 271453 / 302 / 42)
   PASS  summary lines 'X 27 15 6 42 33' and 'K 0' present
-== GATE 4: Python leg, states, 83,106 transitions, per-variant counts ==
+== GATE 4: Python leg, states, 83,106 transitions, per-variant lines, total lines ==
     ok   state list equals the Python reachable set (3078 states, ascending)
     ok   depth, parent state and parent event of every state equal the Python search (differences 0)
     ok   all 83106 (state, event) transition records equal the Python step (differences 0)
-    ok   variants 1..15: states, transitions, found, trace length and events of the separated oracle (bad: [])
-    ok   variants 1..15: original checker result, 3,088 / 83,376 and no hit for 7..15 (bad: [])
+    ok   variants 1..15, M lines: separated oracle: states, transitions, found, property code, trace (bad: [])
+    ok   variants 1..15, O lines: original checker: states, transitions, found, property code, trace (3,088 / 83,376 and no hit for 7..15) (bad: [])
+    ok   variants 1..15, R lines: records that differ from the baseline (bad: [])
+    ok   variants 1..15, P lines: first property hit per transition, 11 property counts (bad: [])
+    ok   total lines Q 1..11: first-hit variants and hit transitions per property equal the Python sums
     ok   fold variants: 27 listed, all detected, as in the Python model
+    ok   total line C: states, transitions, events, graph variants, fold variants, variants equal the Python counts
     ok   X line equals the Python counts (fold, separated, original, totals)
+    ok   every graph variant has a separated-oracle hit
+compared values (per-variant and total lines): 423
   PASS  Python leg: every compared item equal
 
 TOTALS: pass=7 fail=0
 ```
+
+Mutation check of the Python leg, on scratch copies of the repository. Each change was made in `model/src/variants.mind`, one at a time; the gate exits 1 and the Python leg names the line kind:
+
+- one `P` value of variant 3 raised by 1: `FAIL variants 1..15, P lines: ... (bad: [3])`
+- the `R` value of variant 9 raised by 1: `FAIL variants 1..15, R lines: ... (bad: [9])`
+- the total `Q` value of property 4 raised by 1: `FAIL total lines Q 1..11: ...`

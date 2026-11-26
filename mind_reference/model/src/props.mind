@@ -1,9 +1,11 @@
-// Checkers of the PR-25 data exporter. Two modes, no shared function with the model rule.
+// Checkers of the PR-25 data exporter. Two modes. Only prop_old shares a function with the model rule.
 //   prop_sep : the separated oracle. It states the nine normal conditions as s % 512 == 511
-//              (specification_normal) and never calls implementation_normal, power_two,
-//              protection or model_step.
+//              (specification_normal). It calls no function of the model rule: not implementation_normal,
+//              power_two, protection or model_step.
 //   prop_old : the checker that shares the helper with the model (the original checker). It calls
-//              implementation_normal(s, mutant), the same helper that model_step calls.
+//              implementation_normal(s, mutant), the same helper that model_step calls. It copies the
+//              weakness of the original v0.4 checker on purpose, so that the exporter reports the split
+//              of 33 against 42 variants found.
 // Property codes (properties of the public checkers, in their order):
 //   1 invalid_output_code                       2 normal_output_without_current_conditions
 //   3 invalidated_permit_reused                 4 normal_output_on_unpermitted_event
