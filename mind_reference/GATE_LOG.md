@@ -146,3 +146,40 @@ Mutation check of the Python leg, on scratch copies of the repository. Each chan
 - one `P` value of variant 3 raised by 1: `FAIL variants 1..15, P lines: ... (bad: [3])`
 - the `R` value of variant 9 raised by 1: `FAIL variants 1..15, R lines: ... (bad: [9])`
 - the total `Q` value of property 4 raised by 1: `FAIL total lines Q 1..11: ...`
+
+## 2026-11-26: pack gate (`verify/run_pack_gate.sh`)
+
+Compiler: the public mindc 0.10.4 release (`mind 0.10.4`, compiler binary SHA-256 `eb0b96d6f0f52c65199df22824e31a93b27119bff60dc239f530a36c28bc0502`), native backend only, for the exporter and the packer. x86-64 Linux. The gate runs no node and no python.
+
+Command: `MINDC=<path>/mindc-0.10.4/mindc ./verify/run_pack_gate.sh`
+
+Result: `TOTALS: pass=13 fail=0`, exit 0. Packer binary (`model/pack`, `pr25pack`): 25,760 bytes, SHA-256 `3fef2d54392dfc5876c270a3f179ef1b3573f1b8850321616823dbb3c4b689f4` (two clean builds equal). The five files equal the pins in `model/pack/PACK_SHA256SUMS.txt`. Verbatim output; the compiler progress lines that name a scratch folder are left out:
+
+```
+== mindc ==
+mind 0.10.4
+== GATE 1: exporter and packer, check + build, native backend, twice each ==
+  PASS  exporter: two clean native builds, equal binaries (85683 bytes, 7a6614cf2c153b53)
+  PASS  packer: two clean native builds, equal binaries (25760 bytes, 3fef2d54392dfc58)
+== GATE 2: run the exporter, pinned output SHA-256 ==
+  PASS  exporter exits 0
+  PASS  output SHA-256 equals the pin (4b228f500b68f57d)
+== GATE 3: pack, five files against PACK_SHA256SUMS.txt ==
+  PASS  packer exits 0
+  PASS  the pinned list holds 5 files
+states.u16le.bin: OK
+depth.u8.bin: OK
+flags.u8.bin: OK
+parent.u16le_u8.bin: OK
+transitions.u16le.bin: OK
+  PASS  sha256sum -c: all five files equal the pins
+  PASS  states.u16le.bin is 6156 bytes
+  PASS  depth.u8.bin is 3078 bytes
+  PASS  flags.u8.bin is 3078 bytes
+  PASS  parent.u16le_u8.bin is 9234 bytes
+  PASS  transitions.u16le.bin is 166212 bytes
+== GATE 4: the packer refuses a truncated input ==
+  PASS  last 100 lines removed: exit 4, pr25pack: error 4 line 0
+
+TOTALS: pass=13 fail=0
+```
