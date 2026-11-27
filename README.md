@@ -34,7 +34,7 @@ needs its own valid contract, operating envelope and response bound.
 | `PR25_Verification_Note_v0.4.pdf` | 3 | What was executed, the verification weakness found and repaired, exact counts, source hashes, reproduction commands, limits |
 | `PR25_Public_Brief_v0.4.pdf` | 4 | Short introduction and the complete 25-family index |
 | `reference_model/` | — | Executable finite reference model (Python) — runnable, standard library only |
-| `mind_reference/` | — | Independent implementation of the same model in MIND, built through the MLIR route of mindc 0.10.4 |
+| `mind_reference/` | — | Second implementation of the same model in MIND, by the same authors, built through the MLIR route of mindc 0.10.4 |
 
 ---
 
@@ -108,13 +108,13 @@ interpreter version.
 
 ## Two implementations, one model
 
-The same finite model is implemented twice, in two languages, by two separate
-paths:
+The same finite model is implemented twice, in two languages, by the same
+authors:
 
 | | `reference_model/` | `mind_reference/` |
 |---|---|---|
 | Language | Python | MIND |
-| Role | The audited artifact — every number in the Verification Note was produced by this code, and its bytes are digest-pinned | An independent implementation, built through the MLIR route of mindc 0.10.4 |
+| Role | The audited artifact — every number in the Verification Note was produced by this code, and its bytes are digest-pinned | A second implementation, by the same authors, built through the MLIR route of mindc 0.10.4 |
 | Run | `python3 pr25_verify.py` | `./verify/run_gates.sh` |
 
 Both were run over the entire encoded transition relation — 8,192 state
@@ -138,8 +138,10 @@ implementation; this aims to remove the shared *implementation* dependency.
 
 Cross-language agreement on the v0.4 baseline (221,184 records, recorded
 2026-09-13 in `mind_reference/GATE_LOG.md`) is evidence that the model's behaviour is a property
-of the specification rather than of one language, one runtime, or one author's
-reading. It is **not** third-party certification — same operator, same machine.
+of the specification rather than of one language or one runtime. Both
+implementations have the same authors, so it is not evidence against a shared
+reading of the specification. It is **not** third-party certification — same
+operator, same machine.
 
 See `mind_reference/README.md` for gates, digests and reproduction.
 

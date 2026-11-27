@@ -1,8 +1,9 @@
-# PR-25 reference model — independent MIND implementation
+# PR-25 reference model — second implementation, in MIND
 
-This directory holds a **second, independent implementation** of the PR-25
-finite admission/permit model, written in [MIND](https://github.com/star-ga/mind)
-and built through the MLIR route of mindc 0.10.4.
+This directory holds a **second implementation** of the PR-25 finite
+admission/permit model, written in [MIND](https://github.com/star-ga/mind) by
+the same authors as the Python model, and built through the MLIR route of
+mindc 0.10.4.
 
 It does **not** replace `../reference_model/` (Python). The Verification Note
 pins SHA-256 digests to those Python bytes, and every number recorded in the
@@ -31,7 +32,8 @@ asserts the exact record count, and checks both processes' exit statuses.
 The comparison implementation (`verify/independent_reference.py`) was written
 from the specification comments in the MIND source header; this is not proven by
 files in this repository. That matters: a reference derived from the code under
-test shares its blind spots. The intent is that this one does not.
+test shares its blind spots. The intent is that this one does not. The file
+name is historical: the script has the same authors as the MIND source.
 
 ## Reproduce
 
@@ -94,8 +96,9 @@ GATE_LOG.md                          verbatim gate output + digests
 
 **Can be said:** the PR-25 finite reference model exists as pure MIND source,
 builds through the MLIR route of mindc 0.10.4, executes to the expected counts, is deterministic run-to-run,
-is byte-identical across clean rebuilds, and agrees record-for-record with an
-independently written reference on all 221,184 modeled transitions.
+is byte-identical across clean rebuilds, and agrees record-for-record with a
+second reference in Python (`verify/independent_reference.py`, same authors,
+written from the specification comments) on all 221,184 modeled transitions.
 
 Both of these gates are falsifiable, and that was demonstrated rather than
 asserted. Gate 5 was mutation-tested with the reviewer's exact digest-cancelling
