@@ -53,8 +53,10 @@ On a fault the program writes `pr25pack: error <code> line <line>` to standard e
 (line 0: the whole input) and exits with the code: 1 read error, 2 input over 8 MiB,
 3 malformed line, 4 `C` line missing, repeated or out of range, 5 count of `S` or `T`
 lines differs from the `C` line, 6 bad `S` line, 7 bad `T` line, 8 count of `T` values
-differs from the `C` line, 9 short write on fd 3..7. It writes no file before every
-line is checked.
+differs from the `C` line, 9 short write on fd 3..7. It writes no byte before every
+line is checked. The shell redirections of the command above create the five files
+before the program starts, so after a refused input (codes 1 to 8) the five files are
+empty.
 
 ## Check it
 

@@ -35,7 +35,7 @@ e6a6d0cbb56e962823d9348cc7bad2f4375f314109a550e39392a1555381601e  ./mind_referen
 2119f24bd7ba9450f2b3d94eebe746c0582f32c756fb445388cd40efa4f79f7e  ./mind_reference/verify/run_native_export_gate.sh
 eab8f2429bcb57ac42728632208de727229796acc3917fd0c56cf6cb6d804aa3  ./mind_reference/model/pack/Mind.toml
 071e01665dc6f6c4c9b477f650ae559be785a7e11b2deb043fa7d224e53550cc  ./mind_reference/model/pack/PACK_SHA256SUMS.txt
-15d251da506e693da61691ce03d4512a37be65a799c20a9494419f9fe1f086c1  ./mind_reference/model/pack/README.md
+7897e5fd40b31f75b3c73d2ae56ba8a5ee39c0a317044e244f51eab5f9f0194b  ./mind_reference/model/pack/README.md
 96849e70c7f9714c6fe535dc0ee5cea2ccf7d77022b0319c2f36c91b71cecb3e  ./mind_reference/model/pack/src/emit.mind
 3de2a6decfa79e694dd17a1789a90df74206b3ae871140f7c30ae1b8434cde9b  ./mind_reference/model/pack/src/lines.mind
 01e70405ffe0af3fd49828e83eb903ca0c4e82bfe624e0cf09e2ac372aaa4aae  ./mind_reference/model/pack/src/main.mind
