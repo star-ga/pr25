@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 # PR-25 native exporter gate. Builds model/ with the public mindc 0.10.4 release on the
 # NATIVE backend (the compiler reports zero MLIR/LLVM/clang; see model/README.md), twice
-# from clean folders, runs it, pins the SHA-256
-# of its raw output, and compares every state, all 83,106 transitions, the per-variant lines
-# (M, O, R, P, with the property codes) and the total lines (Q, C, X) with the public Python
-# model in ../../reference_model (the Python leg). It prints the count of compared values.
+# from clean folders, runs it, pins the SHA-256 of its raw output, and compares every state,
+# all 83,106 transitions, the per-variant lines (M, O, R, P, with the property codes) and the
+# total lines (Q, C, X) with the public Python model in ../../reference_model (the Python leg).
+# The Python leg also checks that each M, O, R, P line occurs once per variant 1..15 and each
+# Q line once per property 1..11. It prints the count of compared values.
 # Usage: MINDC=/path/to/mindc-0.10.4/mindc ./verify/run_native_export_gate.sh
 # Exit 0 only when every gate passes; exit 2 when a tool or input is missing.
 set -euo pipefail
@@ -136,6 +137,12 @@ def events_of(r): return [v.EVENT_NAMES.index(e) for e in r['trace']]
 byTag = {t: {} for t in 'MORP'}
 for l in lines:
     if l[0] in byTag: byTag[l[0]][int(l[1])] = list(map(int, l[2:]))
+# one line per variant 1..15 (M, O, R, P) and per property 1..11 (Q): a repeated line or a key
+# outside its range would otherwise drop out of the comparison below
+keys = {t: sorted(int(l[1]) for l in lines if l[0] == t) for t in 'MORPQ'}
+check(all(keys[t] == list(range(1, 16)) for t in 'MORP') and keys['Q'] == list(range(1, 12)),
+      'line counts and keys: M, O, R, P 15 lines each (keys 1..15), Q 11 lines (keys 1..11); counts %s'
+      % {t: len(keys[t]) for t in 'MORPQ'})
 compared = 0
 bad = {'M': [], 'O': [], 'R': [], 'P': []}
 firstHit = [0] * 12; hitSum = [0] * 12; sep = old = 0
