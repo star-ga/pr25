@@ -3,7 +3,8 @@
 # mindc 0.10.4 release on the NATIVE backend (the compiler reports zero MLIR/LLVM/clang; see
 # model/README.md), each twice from clean folders, runs the exporter, packs its output into the
 # five binary files with the packer and checks them with model/pack/PACK_SHA256SUMS.txt, then
-# checks that each kind of bad input gives its own error code (codes 1 to 9 of model/pack/README.md).
+# runs eleven refusal cases (bad input, and a closed fd 0 or fd 7), each with its own error code
+# (codes 1 to 9 of model/pack/README.md).
 # No node and no python: every program in this gate is MIND or a core shell tool.
 # Usage: MINDC=/path/to/mindc-0.10.4/mindc ./verify/run_pack_gate.sh
 # Exit 0 only when every gate passes; exit 1 on a failed gate; exit 2 when a tool or input is missing.

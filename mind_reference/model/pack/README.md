@@ -69,10 +69,10 @@ MINDC="$PWD/mindc-0.10.4/mindc" ./mind_reference/verify/run_pack_gate.sh
 The gate builds the exporter and this program twice each from clean folders on the
 native backend and compares the binaries, runs the exporter and checks the SHA-256 of
 its output, packs it, runs `sha256sum -c PACK_SHA256SUMS.txt`, checks the five file
-sizes, and checks that eleven kinds of bad input give their error codes (each of the
-codes 1 to 9 at least once: for example a truncated input, a malformed line, a wrong
-count in the `C` line, a short `S` or `T` line, a closed fd 7). It uses no node and no
-python.
+sizes, and runs eleven refusal cases, each with its exact error code (every code 1 to 9
+at least once): bad input (for example a truncated input, a malformed line, a wrong
+count in the `C` line, a short `S` or `T` line, an input over 8 MiB) and a closed fd 0
+or fd 7. It uses no node and no python.
 
 ## Bounds
 

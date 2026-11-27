@@ -153,7 +153,7 @@ Compiler: the public mindc 0.10.4 release (`mind 0.10.4`, compiler binary SHA-25
 
 Command: `MINDC=<path>/mindc-0.10.4/mindc ./verify/run_pack_gate.sh`
 
-Result: `TOTALS: pass=23 fail=0`, exit 0. Gate 4 gives the packer eleven kinds of bad input and checks each error code 1 to 9 at least once. Packer binary (`model/pack`, `pr25pack`): 25,760 bytes, SHA-256 `3fef2d54392dfc5876c270a3f179ef1b3573f1b8850321616823dbb3c4b689f4` (two clean builds equal). The five files equal the pins in `model/pack/PACK_SHA256SUMS.txt`. Verbatim output; the compiler progress lines that name a scratch folder are left out:
+Result: `TOTALS: pass=23 fail=0`, exit 0. Gate 4 runs eleven refusal cases (bad input, and a closed fd 0 or fd 7) and checks each error code 1 to 9 at least once. Packer binary (`model/pack`, `pr25pack`): 25,760 bytes, SHA-256 `3fef2d54392dfc5876c270a3f179ef1b3573f1b8850321616823dbb3c4b689f4` (two clean builds equal). The five files equal the pins in `model/pack/PACK_SHA256SUMS.txt`. Verbatim output; the compiler progress lines that name a scratch folder are left out:
 
 ```
 == mindc ==
