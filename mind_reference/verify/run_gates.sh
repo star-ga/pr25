@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-# PR-25 pure-MIND gate runner. Builds from source and runs every gate.
+# PR-25 gate runner for the MIND source in src/, built through the MLIR route (see below).
+# Builds from source and runs every gate. The exporter in model/ is built by the native
+# backend; its gates are run_native_export_gate.sh and run_pack_gate.sh.
 #
 # Requires the MIND compiler v0.10.4 release. The source is outside the native
 # subset, so the mlir backend is selected below; it needs mlir-opt,

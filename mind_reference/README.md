@@ -96,8 +96,10 @@ GATE_LOG.md                          verbatim gate output + digests
 
 ## What this evidence licenses
 
-**Can be said:** the PR-25 finite reference model exists as pure MIND source,
-builds through the MLIR route of mindc 0.10.4, executes to the expected counts, is deterministic run-to-run,
+**Can be said:** the PR-25 finite reference model exists as MIND source
+(`src/pr25_reference.mind`), builds through the MLIR route of mindc 0.10.4
+(which uses `mlir-opt`, `mlir-translate` and `clang`; the native backend refuses
+this source), executes to the expected counts, is deterministic run-to-run,
 is byte-identical across clean rebuilds, and agrees record-for-record with a
 second reference in Python (`verify/independent_reference.py`, same authors,
 written from the specification comments) on all 221,184 modeled transitions.
