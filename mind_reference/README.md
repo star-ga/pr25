@@ -11,6 +11,12 @@ Note was produced by that code. This directory exists because **two
 implementations, in two languages, agreeing on every modeled transition is
 stronger evidence than either one alone.**
 
+The folder also holds a native exporter, `model/` (its model rule is a token
+copy of `src/pr25_reference.mind`; built by the native backend; see
+`model/README.md`), and its packer, `model/pack/`, which writes the five binary
+data files of the article (see `model/pack/README.md`). Their gates are
+`verify/run_native_export_gate.sh` and `verify/run_pack_gate.sh`.
+
 ## The result
 
 Both implementations were run over the entire encoded transition relation —

@@ -145,6 +145,13 @@ operator, same machine.
 
 See `mind_reference/README.md` for gates, digests and reproduction.
 
+`mind_reference/model/` holds a native exporter of the same model (its model rule
+is a token copy of the MIND source), built by the native backend of mindc 0.10.4;
+`mind_reference/model/pack/` packs its output into the five binary data files of
+the article at https://star.ga/research/pr25 . Their gates are
+`mind_reference/verify/run_native_export_gate.sh` and
+`mind_reference/verify/run_pack_gate.sh`.
+
 ---
 
 ## Reviewing this work
