@@ -1,0 +1,79 @@
+// Output side of the PR-25 packer: byte stores, full writes, the error message.
+// No model logic.
+pub fn put_u8(b: i64, i: i64, v: i64) -> i64 {
+    __mind_store_i8(b + i, v);
+    return 0;
+}
+
+// Little-endian 16-bit value at element i.
+pub fn put_u16(b: i64, i: i64, v: i64) -> i64 {
+    __mind_store_i8(b + 2 * i, v % 256);
+    __mind_store_i8(b + 2 * i + 1, v / 256);
+    return 0;
+}
+
+// Writes len bytes to fd. Returns 0 when all bytes are written, 1 on a short write.
+pub fn write_all(fd: i64, b: i64, len: i64) -> i64 {
+    let mut done: i64 = 0;
+    while done < len {
+        let w: i64 = __mind_write(fd, b + done, len - done, 0 - 1);
+        if w <= 0 {
+            return 1;
+        }
+        done = done + w;
+    }
+    return 0;
+}
+
+fn pb(b: i64, p: i64, c: i64) -> i64 {
+    __mind_store_i8(b + p, c);
+    return p + 1;
+}
+
+fn put_dec(b: i64, p: i64, v: i64) -> i64 {
+    let mut d: i64 = 1;
+    while d * 10 <= v {
+        d = d * 10;
+    }
+    let mut q: i64 = p;
+    while d > 0 {
+        q = pb(b, q, 48 + (v / d) % 10);
+        d = d / 10;
+    }
+    return q;
+}
+
+// Writes "pr25pack: error <code> line <line>" and a newline to fd 2; returns code.
+pub fn fail(code: i64, line: i64) -> i64 {
+    let b: i64 = __mind_alloc(64);
+    let mut p: i64 = 0;
+    // "pr25pack: error "
+    p = pb(b, p, 112);
+    p = pb(b, p, 114);
+    p = pb(b, p, 50);
+    p = pb(b, p, 53);
+    p = pb(b, p, 112);
+    p = pb(b, p, 97);
+    p = pb(b, p, 99);
+    p = pb(b, p, 107);
+    p = pb(b, p, 58);
+    p = pb(b, p, 32);
+    p = pb(b, p, 101);
+    p = pb(b, p, 114);
+    p = pb(b, p, 114);
+    p = pb(b, p, 111);
+    p = pb(b, p, 114);
+    p = pb(b, p, 32);
+    p = put_dec(b, p, code);
+    // " line "
+    p = pb(b, p, 32);
+    p = pb(b, p, 108);
+    p = pb(b, p, 105);
+    p = pb(b, p, 110);
+    p = pb(b, p, 101);
+    p = pb(b, p, 32);
+    p = put_dec(b, p, line);
+    p = pb(b, p, 10);
+    write_all(2, b, p);
+    return code;
+}

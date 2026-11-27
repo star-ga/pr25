@@ -1,0 +1,181 @@
+// PR-25 packer. No model logic: parsing and packing only.
+// Reads the output of the exporter (../src) on fd 0 and writes the five binary files of
+// the article data to fd 3..7, in this order:
+//   fd 3 states.u16le.bin       per state: 13-bit encoding, u16 little-endian
+//   fd 4 depth.u8.bin           per state: search depth, u8
+//   fd 5 flags.u8.bin           per state: flag column, u8
+//   fd 6 parent.u16le_u8.bin    per state: parent index (u16 LE, 65535 = none), parent event (u8, 255 = none)
+//   fd 7 transitions.u16le.bin  per state and event: next index + 4096 * output, u16 LE
+// Counts come from the C line (states, transitions, events); S and T lines give the values.
+// Exit status 0, or one of these codes, with "pr25pack: error <code> line <line>" on fd 2:
+//   1 read error   2 input over 8 MiB   3 malformed line   4 C line missing, repeated or out of range
+//   5 S or T line count differs from the C line   6 bad S line   7 bad T line
+//   8 count of T values differs from the C line   9 short write on fd 3..7
+import lines;
+import emit;
+
+// Pass 1: syntax of every line, the one C line, the count of S and T lines.
+// cnt slots: 0 states, 1 transitions, 2 events (from the C line), 3 C lines, 4 S lines, 5 T lines.
+fn scan(cx: i64, cnt: i64) -> i64 {
+    let vals: i64 = ld(cx, 6);
+    let mut r: i64 = next_line(cx);
+    while r == 0 {
+        let tag: i64 = ld(cx, 4);
+        if tag == 67 {
+            if ld(cnt, 3) != 0 || ld(cx, 5) != 6 {
+                return fail(4, ld(cx, 3));
+            }
+            st(cnt, 0, ld(vals, 0));
+            st(cnt, 1, ld(vals, 1));
+            st(cnt, 2, ld(vals, 2));
+            st(cnt, 3, 1)
+        }
+        if tag == 83 {
+            st(cnt, 4, ld(cnt, 4) + 1)
+        }
+        if tag == 84 {
+            st(cnt, 5, ld(cnt, 5) + 1)
+        }
+        r = next_line(cx);
+    }
+    if r == 2 {
+        return fail(3, ld(cx, 3));
+    }
+    if ld(cnt, 3) != 1 {
+        return fail(4, 0);
+    }
+    // 4096 states: a next index must fit in 12 bits; 255 events: 255 is the "none" event.
+    if ld(cnt, 0) < 1 || ld(cnt, 0) > 4096 || ld(cnt, 2) < 1 || ld(cnt, 2) > 255 || ld(cnt, 1) < 0 {
+        return fail(4, 0);
+    }
+    if ld(cnt, 4) != ld(cnt, 0) || ld(cnt, 5) != ld(cnt, 0) {
+        return fail(5, 0);
+    }
+    return 0;
+}
+
+// S idx enc depth parentIdx parentEvent f0..f9 permit binding flags (18 numbers).
+fn pack_state(outs: i64, vals: i64, i: i64, cnt: i64) -> i64 {
+    let n: i64 = ld(cnt, 0);
+    let enc: i64 = ld(vals, 1);
+    let dep: i64 = ld(vals, 2);
+    let pi: i64 = ld(vals, 3);
+    let pe: i64 = ld(vals, 4);
+    let fl: i64 = ld(vals, 17);
+    if ld(vals, 0) != i || enc < 0 || enc > 65535 || dep < 0 || dep > 255 || fl < 0 || fl > 255 {
+        return 1;
+    }
+    if pi < 0 - 1 || pi >= n || pe < 0 - 1 || pe >= ld(cnt, 2) {
+        return 1;
+    }
+    let mut pi16: i64 = pi;
+    if pi < 0 {
+        pi16 = 65535;
+    }
+    let mut pe8: i64 = pe;
+    if pe < 0 {
+        pe8 = 255;
+    }
+    put_u16(ld(outs, 0), i, enc);
+    put_u8(ld(outs, 1), i, dep);
+    put_u8(ld(outs, 2), i, fl);
+    put_u8(ld(outs, 3), 3 * i, pi16 % 256);
+    put_u8(ld(outs, 3), 3 * i + 1, pi16 / 256);
+    put_u8(ld(outs, 3), 3 * i + 2, pe8);
+    return 0;
+}
+
+// T idx v0..v(events-1), v = 4 * next + output; packed as next + 4096 * output.
+fn pack_trans(outs: i64, vals: i64, i: i64, cnt: i64) -> i64 {
+    let n: i64 = ld(cnt, 0);
+    let ev: i64 = ld(cnt, 2);
+    if ld(vals, 0) != i {
+        return 1;
+    }
+    let mut k: i64 = 0;
+    while k < ev {
+        let v: i64 = ld(vals, 1 + k);
+        if v < 0 || v / 4 >= n {
+            return 1;
+        }
+        put_u16(ld(outs, 4), i * ev + k, v / 4 + 4096 * (v % 4));
+        k = k + 1;
+    }
+    return 0;
+}
+
+// Pass 2: pack every S and T line, in input order.
+fn pack(cx: i64, cnt: i64, outs: i64) -> i64 {
+    let vals: i64 = ld(cx, 6);
+    let mut si: i64 = 0;
+    let mut ti: i64 = 0;
+    let mut tv: i64 = 0;
+    rewind(cx);
+    while next_line(cx) == 0 {
+        if ld(cx, 4) == 83 {
+            if ld(cx, 5) != 18 || pack_state(outs, vals, si, cnt) != 0 {
+                return fail(6, ld(cx, 3));
+            }
+            si = si + 1;
+        }
+        if ld(cx, 4) == 84 {
+            if ld(cx, 5) != 1 + ld(cnt, 2) || pack_trans(outs, vals, ti, cnt) != 0 {
+                return fail(7, ld(cx, 3));
+            }
+            tv = tv + ld(cx, 5) - 1;
+            ti = ti + 1;
+        }
+    }
+    if tv != ld(cnt, 1) {
+        return fail(8, 0);
+    }
+    return 0;
+}
+
+fn write_files(outs: i64, cnt: i64) -> i64 {
+    let n: i64 = ld(cnt, 0);
+    let mut bad: i64 = write_all(3, ld(outs, 0), 2 * n);
+    bad = bad + write_all(4, ld(outs, 1), n);
+    bad = bad + write_all(5, ld(outs, 2), n);
+    bad = bad + write_all(6, ld(outs, 3), 3 * n);
+    bad = bad + write_all(7, ld(outs, 4), 2 * n * ld(cnt, 2));
+    if bad != 0 {
+        return fail(9, 0);
+    }
+    return 0;
+}
+
+fn main() -> i64 {
+    let cap: i64 = 8388608;
+    let buf: i64 = __mind_alloc(cap);
+    let len: i64 = read_all(buf, cap);
+    if len == 0 - 1 {
+        return fail(1, 0);
+    }
+    if len < 0 {
+        return fail(2, 0);
+    }
+    let cx: i64 = new_cursor(buf, len, 300);
+    let cnt: i64 = __mind_alloc(8 * 6);
+    let mut j: i64 = 0;
+    while j < 6 {
+        st(cnt, j, 0);
+        j = j + 1;
+    }
+    let r1: i64 = scan(cx, cnt);
+    if r1 != 0 {
+        return r1;
+    }
+    let n: i64 = ld(cnt, 0);
+    let outs: i64 = __mind_alloc(8 * 5);
+    st(outs, 0, __mind_alloc(2 * n));
+    st(outs, 1, __mind_alloc(n));
+    st(outs, 2, __mind_alloc(n));
+    st(outs, 3, __mind_alloc(3 * n));
+    st(outs, 4, __mind_alloc(2 * n * ld(cnt, 2)));
+    let r2: i64 = pack(cx, cnt, outs);
+    if r2 != 0 {
+        return r2;
+    }
+    return write_files(outs, cnt);
+}

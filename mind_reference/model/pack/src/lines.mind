@@ -1,0 +1,116 @@
+// Input side of the PR-25 packer: read standard input, split it into lines of numbers.
+// No model logic.
+// Cursor block cx (8-byte slots): 0 buffer, 1 input length, 2 position of the next line,
+// 3 line number of the current line, 4 tag letter (0 for a line without a tag),
+// 5 count of numbers on the line, 6 number table, 7 table capacity, 8 scratch value.
+pub fn ld(t: i64, i: i64) -> i64 {
+    return __mind_load_i64(t + 8 * i);
+}
+
+pub fn st(t: i64, i: i64, v: i64) -> i64 {
+    __mind_store_i64(t + 8 * i, v);
+    return 0;
+}
+
+// Reads fd 0 into buf until end of input. Returns the byte count,
+// -1 on a read error, -2 when the input does not fit in cap bytes.
+pub fn read_all(buf: i64, cap: i64) -> i64 {
+    let mut got: i64 = 0;
+    while got < cap {
+        let n: i64 = __mind_read(0, buf + got, cap - got, 0 - 1);
+        if n == 0 {
+            return got;
+        }
+        if n < 0 {
+            return 0 - 1;
+        }
+        got = got + n;
+    }
+    return 0 - 2;
+}
+
+pub fn new_cursor(buf: i64, len: i64, cap: i64) -> i64 {
+    let cx: i64 = __mind_alloc(8 * 9);
+    st(cx, 0, buf);
+    st(cx, 1, len);
+    st(cx, 2, 0);
+    st(cx, 3, 0);
+    st(cx, 6, __mind_alloc(8 * cap));
+    st(cx, 7, cap);
+    return cx;
+}
+
+pub fn rewind(cx: i64) -> i64 {
+    st(cx, 2, 0);
+    st(cx, 3, 0);
+    return 0;
+}
+
+// Parses an optional minus sign and 1 to 18 digits at position p. Stores the value
+// in slot 8 and returns the position after the number, or -1 when there is no number.
+fn parse_num(cx: i64, p: i64) -> i64 {
+    let buf: i64 = ld(cx, 0);
+    let len: i64 = ld(cx, 1);
+    let mut q: i64 = p;
+    let mut sign: i64 = 1;
+    if q < len && __mind_load_i8(buf + q) == 45 {
+        sign = 0 - 1;
+        q = q + 1;
+    }
+    let start: i64 = q;
+    let mut v: i64 = 0;
+    while q < len && __mind_load_i8(buf + q) >= 48 && __mind_load_i8(buf + q) <= 57 {
+        v = v * 10 + __mind_load_i8(buf + q) - 48;
+        q = q + 1;
+    }
+    if q == start || q - start > 18 {
+        return 0 - 1;
+    }
+    st(cx, 8, sign * v);
+    return q;
+}
+
+// Reads the next line: an optional tag letter A..Z, then numbers separated by one space
+// (a space also follows the tag), then a newline. Returns 0 for a line, 1 at the end
+// of the input, 2 for a malformed line. Numbers past the table capacity are counted only.
+pub fn next_line(cx: i64) -> i64 {
+    let buf: i64 = ld(cx, 0);
+    let len: i64 = ld(cx, 1);
+    let vals: i64 = ld(cx, 6);
+    let cap: i64 = ld(cx, 7);
+    let mut p: i64 = ld(cx, 2);
+    if p >= len {
+        return 1;
+    }
+    st(cx, 3, ld(cx, 3) + 1);
+    let mut tag: i64 = 0;
+    let c0: i64 = __mind_load_i8(buf + p);
+    if c0 >= 65 && c0 <= 90 {
+        tag = c0;
+        p = p + 1;
+    }
+    let mut n: i64 = 0;
+    while p < len && __mind_load_i8(buf + p) != 10 {
+        if n > 0 || tag != 0 {
+            if __mind_load_i8(buf + p) != 32 {
+                return 2;
+            }
+            p = p + 1;
+        }
+        p = parse_num(cx, p);
+        if p < 0 {
+            return 2;
+        }
+        if n < cap {
+            st(vals, n, ld(cx, 8))
+        }
+        n = n + 1;
+    }
+    if p >= len || (n == 0 && tag == 0) {
+        return 2;
+    }
+    st(cx, 2, p + 1);
+    st(cx, 4, tag);
+    st(cx, 5, n);
+    return 0;
+}
