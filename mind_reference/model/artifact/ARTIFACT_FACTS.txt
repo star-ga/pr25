@@ -1,0 +1,8 @@
+artifact_bytes 101641
+body_bytes 9461
+map_offset 9461
+map_bytes 92180
+map_entries 1254
+compiler_map_entries 6
+namespace_entries 1248
+trace_hash 993a9ac50b9c71339b10f41f81e37ef72285ce07319c9e7c9e1f6b6c2abd6436
