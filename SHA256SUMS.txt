@@ -44,3 +44,4 @@ eab8f2429bcb57ac42728632208de727229796acc3917fd0c56cf6cb6d804aa3  ./mind_referen
 5ddb3bfaec61157438efbfe39c7208c442a63a612efd17beca2609e5d9183945  ./mind_reference/model/artifact/ARTIFACT_SHA256SUMS.txt
 eb9defccd19d839cd5756ea7f86ee1c56775732e930456710cec26561a1910a4  ./mind_reference/model/artifact/records.txt
 3f5477c65256e6138c7f1dc27184223a76e9afc374469d4c4e792bcabd6bb130  ./mind_reference/verify/run_artifact_gate.sh
+cf580b14331ff495c0eeca44d3633bec247ef8c1a6d47f2d9696c52e877cdccc  ./mind_reference/model/artifact/README.md
