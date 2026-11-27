@@ -32,8 +32,9 @@ gate below.
 
 ## Build and run
 
-From a fresh clone, fetch and check the compiler release first (commands in
-`../README.md`, section Reproduce), then:
+In the root of a fresh clone, fetch and check the compiler release first; it goes
+to `mindc-0.10.4/` in the repository root (commands in `../README.md`, section
+Reproduce). Then, from the repository root:
 
 ```sh
 MINDC="$PWD/mindc-0.10.4/mindc"

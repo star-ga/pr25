@@ -37,9 +37,11 @@ name is historical: the script has the same authors as the MIND source.
 
 ## Reproduce
 
-The gates run against the MIND compiler `v0.10.4` release. Download the
-Linux x86-64 archive, verify its published SHA-256, and extract it into a fresh
-folder (use the matching asset on another platform):
+The gates run against the MIND compiler `v0.10.4` release. In the root of a
+fresh clone of this repository, download the Linux x86-64 archive, verify its
+published SHA-256, and extract it into the folder `mindc-0.10.4/` there (use the
+matching asset on another platform). The commands in `model/README.md` and
+`model/pack/README.md` use the compiler at this same place:
 
 ```sh
 curl -fLO https://github.com/star-ga/mind/releases/download/v0.10.4/mindc-linux-x64.tar.gz
@@ -50,10 +52,10 @@ tar -xzf mindc-linux-x64.tar.gz -C mindc-0.10.4
 ./mindc-0.10.4/mindc --version
 ```
 
-Then:
+Then, still in the repository root:
 
 ```sh
-MINDC="$PWD/mindc-0.10.4/mindc" ./verify/run_gates.sh
+MINDC="$PWD/mindc-0.10.4/mindc" ./mind_reference/verify/run_gates.sh
 ```
 
 `run_gates.sh` selects the `mlir` backend, because the source is outside the
