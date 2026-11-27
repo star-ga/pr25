@@ -153,7 +153,7 @@ Compiler: the public mindc 0.10.4 release (`mind 0.10.4`, compiler binary SHA-25
 
 Command: `MINDC=<path>/mindc-0.10.4/mindc ./verify/run_pack_gate.sh`
 
-Result: `TOTALS: pass=13 fail=0`, exit 0. Packer binary (`model/pack`, `pr25pack`): 25,760 bytes, SHA-256 `3fef2d54392dfc5876c270a3f179ef1b3573f1b8850321616823dbb3c4b689f4` (two clean builds equal). The five files equal the pins in `model/pack/PACK_SHA256SUMS.txt`. Verbatim output; the compiler progress lines that name a scratch folder are left out:
+Result: `TOTALS: pass=23 fail=0`, exit 0. Gate 4 gives the packer eleven kinds of bad input and checks each error code 1 to 9 at least once. Packer binary (`model/pack`, `pr25pack`): 25,760 bytes, SHA-256 `3fef2d54392dfc5876c270a3f179ef1b3573f1b8850321616823dbb3c4b689f4` (two clean builds equal). The five files equal the pins in `model/pack/PACK_SHA256SUMS.txt`. Verbatim output; the compiler progress lines that name a scratch folder are left out:
 
 ```
 == mindc ==
@@ -178,8 +178,18 @@ transitions.u16le.bin: OK
   PASS  flags.u8.bin is 3078 bytes
   PASS  parent.u16le_u8.bin is 9234 bytes
   PASS  transitions.u16le.bin is 166212 bytes
-== GATE 4: the packer refuses a truncated input ==
+== GATE 4: the packer refuses each kind of bad input with its own error code ==
   PASS  last 100 lines removed: exit 4, pr25pack: error 4 line 0
+  PASS  two spaces in line S 7: exit 3, pr25pack: error 3 line 13
+  PASS  C line repeated: exit 4, pr25pack: error 4 line 6262
+  PASS  C line says 3077 states: exit 5, pr25pack: error 5 line 0
+  PASS  line S 5 one number short: exit 6, pr25pack: error 6 line 11
+  PASS  line T 2 one value short: exit 7, pr25pack: error 7 line 3086
+  PASS  line T 0 next index 3078: exit 7, pr25pack: error 7 line 3084
+  PASS  C line says 83105 transitions: exit 8, pr25pack: error 8 line 0
+  PASS  input over 8 MiB: exit 2, pr25pack: error 2 line 0
+  PASS  fd 0 closed: exit 1, pr25pack: error 1 line 0
+  PASS  fd 7 closed: exit 9, pr25pack: error 9 line 0
 
-TOTALS: pass=13 fail=0
+TOTALS: pass=23 fail=0
 ```

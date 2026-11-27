@@ -2,7 +2,8 @@
 # PR-25 pack gate. Builds the exporter (model/) and the packer (model/pack/) with the public
 # mindc 0.10.4 release on the NATIVE backend (the compiler reports zero MLIR/LLVM/clang; see
 # model/README.md), each twice from clean folders, runs the exporter, packs its output into the
-# five binary files with the packer and checks them with model/pack/PACK_SHA256SUMS.txt.
+# five binary files with the packer and checks them with model/pack/PACK_SHA256SUMS.txt, then
+# checks that each kind of bad input gives its own error code (codes 1 to 9 of model/pack/README.md).
 # No node and no python: every program in this gate is MIND or a core shell tool.
 # Usage: MINDC=/path/to/mindc-0.10.4/mindc ./verify/run_pack_gate.sh
 # Exit 0 only when every gate passes; exit 1 on a failed gate; exit 2 when a tool or input is missing.
@@ -12,7 +13,7 @@ OUT_SHA="4b228f500b68f57d2f5f773527f9933fdf7225ee4f0b995604f55bdaf4d954b6"
 SIZES="states.u16le.bin:6156 depth.u8.bin:3078 flags.u8.bin:3078 parent.u16le_u8.bin:9234 transitions.u16le.bin:166212"
 
 [ -n "${MINDC:-}" ] && [ -x "$MINDC" ] || { echo "FAIL: set MINDC to the mindc 0.10.4 release binary"; exit 2; }
-for t in sha256sum cmp nice mktemp head cut stat wc; do
+for t in sha256sum cmp nice mktemp head cut stat wc sed cat; do
   command -v "$t" >/dev/null || { echo "FAIL: missing tool: $t"; exit 2; }
 done
 R="$(cd "$(dirname "$0")/.." && pwd)"
@@ -72,9 +73,34 @@ for p in $SIZES; do
   [ "$got" = "$want" ] && ok "$f is $want bytes" || no "$f is $got bytes, not $want"
 done
 
-echo "== GATE 4: the packer refuses a truncated input =="
-head -n -100 "$W/export.txt" > "$W/short.txt"
-set +e; ( cd "$W" && "$PACK" < short.txt 3>/dev/null 4>/dev/null 5>/dev/null 6>/dev/null 7>/dev/null 2>"$W/err.txt" ); rc=$?; set -e
-[ "$rc" -ne 0 ] && ok "last 100 lines removed: exit $rc, $(head -1 "$W/err.txt")" || no "truncated input accepted (exit 0)"
-
+echo "== GATE 4: the packer refuses each kind of bad input with its own error code =="
+E="$W/export.txt"
+variant(){ # <name> <sed script>: a copy of the export with one change; a change that does not apply is a FAIL
+  sed "$2" "$E" > "$W/$1.txt"
+  if cmp -s "$E" "$W/$1.txt"; then no "$1: the change did not apply"; return 1; fi
+}
+refused(){ # <label> <expected exit code> <input file> [fd to close: 0 or 7]
+  local rc
+  set +e
+  case "${4:-}" in
+    0) ( cd "$W" && "$PACK" <&- 3>/dev/null 4>/dev/null 5>/dev/null 6>/dev/null 7>/dev/null 2>"$W/err.txt" ) ;;
+    7) ( cd "$W" && "$PACK" < "$3" 3>/dev/null 4>/dev/null 5>/dev/null 6>/dev/null 7>&- 2>"$W/err.txt" ) ;;
+    *) ( cd "$W" && "$PACK" < "$3" 3>/dev/null 4>/dev/null 5>/dev/null 6>/dev/null 7>/dev/null 2>"$W/err.txt" ) ;;
+  esac
+  rc=$?; set -e
+  [ "$rc" -eq "$2" ] && ok "$1: exit $rc, $(head -1 "$W/err.txt")" || no "$1: exit $rc, not $2 ($(head -1 "$W/err.txt"))"
+}
+head -n -100 "$E" > "$W/short.txt"
+refused "last 100 lines removed" 4 "$W/short.txt"
+variant malformed 's/^S 7 /S 7  /' && refused "two spaces in line S 7" 3 "$W/malformed.txt"
+variant twoc '/^C /p' && refused "C line repeated" 4 "$W/twoc.txt"
+variant cstates 's/^C 3078 /C 3077 /' && refused "C line says 3077 states" 5 "$W/cstates.txt"
+variant sshort 's/^\(S 5 .*\) [0-9]*$/\1/' && refused "line S 5 one number short" 6 "$W/sshort.txt"
+variant tshort 's/^\(T 2 .*\) [0-9]*$/\1/' && refused "line T 2 one value short" 7 "$W/tshort.txt"
+variant tnext 's/^T 0 0 /T 0 12312 /' && refused "line T 0 next index 3078" 7 "$W/tnext.txt"
+variant ctrans 's/^C 3078 83106 /C 3078 83105 /' && refused "C line says 83105 transitions" 8 "$W/ctrans.txt"
+{ cat "$E"; head -c 8388608 /dev/zero; } > "$W/big.txt"
+refused "input over 8 MiB" 2 "$W/big.txt"
+refused "fd 0 closed" 1 "" 0
+refused "fd 7 closed" 9 "$E" 7
 totals
