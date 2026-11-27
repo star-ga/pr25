@@ -107,8 +107,8 @@ GATE_LOG.md                          verbatim gate output + digests
 (which uses `mlir-opt`, `mlir-translate` and `clang`; the native backend refuses
 this source), executes to the expected counts, is deterministic run-to-run,
 is byte-identical across clean rebuilds, and agrees record-for-record with a
-second reference in Python (`verify/independent_reference.py`, same authors,
-written from the specification comments) on all 221,184 modeled transitions.
+second reference in Python (`verify/independent_reference.py`, same authors)
+on all 221,184 modeled transitions.
 
 Both of these gates are falsifiable, and that was demonstrated rather than
 asserted. Gate 5 was mutation-tested with the reviewer's exact digest-cancelling
