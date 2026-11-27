@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # PR-25 native exporter gate. Builds model/ with the public mindc 0.10.4 release on the
-# NATIVE backend (no MLIR, no clang), twice from clean folders, runs it, pins the SHA-256
+# NATIVE backend (the compiler reports zero MLIR/LLVM/clang; see model/README.md), twice
+# from clean folders, runs it, pins the SHA-256
 # of its raw output, and compares every state, all 83,106 transitions, the per-variant lines
 # (M, O, R, P, with the property codes) and the total lines (Q, C, X) with the public Python
 # model in ../../reference_model (the Python leg). It prints the count of compared values.
