@@ -95,6 +95,8 @@ transitions); the separated oracle finds a counterexample for each of them.
 
 ## Check it
 
+From the repository root:
+
 ```sh
 MINDC="$PWD/mindc-0.10.4/mindc" ./mind_reference/verify/run_native_export_gate.sh
 ```
