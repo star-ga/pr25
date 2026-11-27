@@ -1,6 +1,6 @@
 # Gate log — verbatim output
 
-Historical record of the 2026-09-13 run with mind 0.10.2 (the sections before the 2026-11-26 entry). With mind 0.10.4 this source builds only through the MLIR route.
+Historical record of the 2026-09-13 run with mind 0.10.2 (the sections before the 2026-11-26 entry). With mind 0.10.4 this source builds only through the MLIR route. The Provenance hashes are of the files at that run; later commits changed two of the listed files (the gate runner, and the opening sentence of the docstring of the comparison implementation), see `git log`.
 
 Run 2026-09-13T20:20Z on x86-64 Linux (kernel 7.0.0), from a fresh anonymous
 clone of the public repository.

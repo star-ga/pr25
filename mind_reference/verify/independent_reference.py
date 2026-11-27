@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Independent reference implementation of the PR-25 finite admission model.
+"""Second reference implementation of the PR-25 finite admission model, by the
+same authors as the MIND source.
 
 WRITTEN FROM THE SPEC COMMENTS in src/pr25_reference.mind (header block), NOT
 transliterated from its function bodies. This is deliberate: the defect the
