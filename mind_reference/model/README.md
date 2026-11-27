@@ -57,7 +57,9 @@ Expected: exit status 0 and the same binary SHA-256 as below. This shows that th
 build does not look up a tool on `PATH`; it does not show how the compiler is
 written inside.
 
-Expected: `mindc --version` prints `mind 0.10.4` on its first line; `check` and `build` exit 0; the
+Expected: `mindc --version` prints `mind 0.10.4` on its first line; `check` and `build` exit 0 (`check`
+also prints a note that 3 `.mind` files below this folder are not in its source
+set: they are the files of `pack/`, a separate package); the
 binary is 85,683 bytes with SHA-256
 `7a6614cf2c153b530897a8968b6d5b6adbeaf7c874778f7be14a57f20177fabb` (two clean builds
 give the same bytes); the program exits 0; `export.txt` is 594,043 bytes, 6,279
