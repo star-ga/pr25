@@ -193,3 +193,55 @@ transitions.u16le.bin: OK
 
 TOTALS: pass=23 fail=0
 ```
+
+## 2026-11-26: artifact gate (`verify/run_artifact_gate.sh`)
+
+Compiler: the public mindc 0.10.4 release (`mind 0.10.4`, compiler binary SHA-256 `eb0b96d6f0f52c65199df22824e31a93b27119bff60dc239f530a36c28bc0502`). x86-64 Linux. The gate runs no node and no python.
+
+Command: `MINDC=<path>/mindc-0.10.4/mindc ./verify/run_artifact_gate.sh`
+
+Result: `TOTALS: pass=21 fail=0`, exit 0. Artifact `pr25.mic3`: 101,641 bytes, SHA-256 `cc69f21c943bc10f384660fa647b9496e2698161da73356b1fdd1dae778013e3`; plain body 9,461 bytes; MAP 92,180 bytes, 1,254 entries (6 of the compiler, 1,248 under `ga.star.pr25.`). The trace hash covers the IR body only; the records are pinned by the file SHA-256. Verbatim output:
+
+```
+== mindc ==
+mind 0.10.4
+== GATE 1: records.txt form ==
+  PASS  ends with a line feed
+  PASS  1248 lines, each 'ga.star.pr25.<key>=<value>' (no empty line)
+  PASS  no carriage return
+  PASS  keys unique and in byte order
+  PASS  line count equals namespace_entries of ARTIFACT_FACTS.txt
+== GATE 2: two clean builds, byte-identical ==
+  PASS  artifacts equal (101641 bytes) and bodies equal
+== GATE 3: SHA-256 pins ==
+pr25.mic3: OK
+pr25.body.mic3: OK
+  PASS  pr25.mic3 and pr25.body.mic3 equal ARTIFACT_SHA256SUMS.txt
+  PASS  the pinned list holds 2 files
+== GATE 4: mindc verify, trace hash ==
+  PASS  mindc verify exits 0 and prints 'trace_hash_valid: yes'
+  PASS  trace hash equals ARTIFACT_FACTS.txt (993a9ac50b9c7133)
+  PASS  trace hash equals the SHA-256 of the plain body (kind mic3-bytes)
+  PASS  mindc inspect exits 0 and prints 'attested: YES'
+== GATE 5: plain body is the first part, MAP at the offset ==
+  PASS  the first 9461 bytes of the artifact equal the plain body
+  PASS  byte at offset 9461 is 0x4D (MAP sentinel)
+  PASS  sizes equal the facts: artifact 101641, body = MAP offset 9461, MAP 92180
+== GATE 6: the MAP holds every line of records.txt ==
+  PASS  'ga.star.pr25.' occurs 1248 times in the MAP part, once per line of records.txt
+  PASS  the build with no records has the same body and 6 compiler entries
+  PASS  MAP entry count 6 + 1248 = 1254 equals the facts
+  PASS  the artifact equals body + 0x4D + count + the 6 compiler entries + one string entry per line, in line order
+  PASS  one record changed by one character: a different artifact SHA-256
+  PASS  the same change leaves the trace hash unchanged: the records are pinned by the file SHA-256, not by the trace hash
+
+TOTALS: pass=21 fail=0
+```
+
+Mutation proofs, each in a scratch copy, every one red (exit 1); the unmutated copy is green (`TOTALS: pass=21 fail=0`):
+
+- one character of one record value changed: `FAIL  sha256sum -c: a file differs from its pin`
+- one record line removed: `FAIL  1247 lines, facts say 1248`
+- one hex digit of the artifact pin changed: `FAIL  sha256sum -c: a file differs from its pin`
+- a record `evidence_chain.x=1` added: the compiler refuses it, ``mindc: error[emit-evidence]: application evidence key `evidence_chain.x` uses the reserved `evidence_chain.` namespace``, and `FAIL  build a: mindc refused the records`
+- one token of `model/src/model.mind` changed (`while i < 9` to `while i < 8`): `FAIL  trace hash '967d2a9051b0f71ce8328f1d2bd4514344758e656a31077b1227f75bfd076cd0' differs from the facts`

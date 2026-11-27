@@ -15,7 +15,10 @@ The folder also holds a native exporter, `model/` (its model rule is a token
 copy of `src/pr25_reference.mind`; built by the native backend; see
 `model/README.md`), and its packer, `model/pack/`, which writes the five binary
 data files of the article (see `model/pack/README.md`). Their gates are
-`verify/run_native_export_gate.sh` and `verify/run_pack_gate.sh`.
+`verify/run_native_export_gate.sh` and `verify/run_pack_gate.sh`. The folder
+`model/artifact/` holds the records of the five data tables of the article as MAP
+entries of a mic@3 artifact of the model rule (see `model/artifact/README.md`);
+its gate is `verify/run_artifact_gate.sh`.
 
 ## The result
 
